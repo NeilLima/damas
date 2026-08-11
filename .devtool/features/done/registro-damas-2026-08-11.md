@@ -1,0 +1,10 @@
+id: "registro-damas-2026-08-11"
+status: "done"
+priority: "medium"
+assignee: "victor"
+epic: null
+dueDate: null
+created: "2026-08-11T21:57:31.463Z"
+modified: "2026-08-11T22:05:00.000Z"
+completedAt: "2026-08-11T22:05:00.000Z"
+labels: []
