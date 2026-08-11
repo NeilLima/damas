@@ -1,0 +1,57 @@
+# Projeto Nexus Social - Mapa de Estrutura Backend (Enterprise/Laravel Style)
+
+O backend segue uma arquitetura modular inspirada em frameworks robustos (Laravel), garantindo separação total entre infraestrutura global e regras de negócio específicas.
+
+```text
+backend/
+├── 📁 src/
+│   ├── 📁 auth/              # [CORE] Autenticação (Login/Registro/JWT)
+│   │   ├── 📁 controllers/   # AuthController
+│   │   ├── 📁 services/      # AuthService
+│   │   ├── 📁 repository/    # AuthRepository
+│   │   ├── 📁 dto/           # LoginDto, RegisterDto
+│   │   ├── 📁 strategies/    # JwtStrategy
+│   │   ├── 📁 guards/        # JwtAuthGuard
+│   │   └── 📄 auth.module.ts
+│   │
+│   ├── 📁 common/            # [INFRA GLOBAL] Decorators, Filters, Guards, Interceptors
+│   │
+│   ├── 📁 config/            # [CONFIG] Configurações centralizadas
+│   │   ├── cors.config.ts     # CORS dinâmico por ambiente
+│   │   ├── database.config.ts # Conexão Supabase
+│   │   ├── jwt.config.ts      # JWT settings
+│   │   ├── auth.config.ts     # Auth settings
+│   │   └── uploads.config.ts  # Upload settings
+│   │
+│   ├── 📁 core/              # [BASE] Infraestrutura reutilizável
+│   │   ├── 📁 prisma/         # PrismaService/Module (único)
+│   │   ├── 📁 storage/        # StorageModule
+│   │   ├── 📁 base/           # Classes base
+│   │   └── � core.module.ts  # Exporta Prisma + Storage globalmente
+│   │
+│   ├── 📁 modules/           # [BUSINESS LOGIC] Módulos de funcionalidade
+│   │   ├── 📁 user/           # Gestão de Perfis e Relacionamentos
+│   │   ├── 📁 post/           # Feed, Curtidas, Comentários
+│   │   └── 📁 ...outros       # Marketplace, Dating, Jobs, etc.
+│   │
+│   ├── 📁 providers/         # [EXTERNAL] Serviços de terceiros
+│   │   ├── 📁 supabase/       # Cliente Supabase
+│   │   └── 📁 mail/           # Serviço de e-mail
+│   │
+│   ├── 📄 app.module.ts      # Módulo raiz
+│   └── 📄 main.ts            # Entry point
+│
+├── 📁 prisma/                # Schema e Migrations
+│   ├── schema.prisma           # Modelagem do Banco de Dados
+│   └── seed.ts                 # Dados iniciais
+│
+├── 📄 .env                   # Variáveis de ambiente
+└── 📄 package.json           # Dependências
+```
+
+### Regras Aplicadas do Backend:
+1. **Prisma único:** Apenas `src/core/prisma` exporta PrismaService.
+2. **Config centralizada:** Todas as configs em `src/config`, carregadas via ConfigModule.
+3. **Auth centralizado:** Módulo `src/auth` é o único responsável por autenticação.
+4. **Core global:** CoreModule exporta Prisma e Storage para todo o app.
+

@@ -1,0 +1,42 @@
+1 - backend deve ta sujeito as funcionalidades do core nadapode ser implementdo sem Ele
+2 - toda estrutura de diretorios devem ser estruturados assim:
+
+modules/
+nomeDoDiretorio/
+     controllers/
+     schemas/
+     dto/
+     interface/
+     repository/
+     services/
+     types/
+     logs/
+     routes/
+    
+nomeDoDiretorio.modules.ts  
+3 - nao podem haver mais de um arquivo no msm diretorio        
+4 - o diretorio auth serve para analisar as configurações de autenticação necessaria.
+5 - o arquivo user deve ser conectado a todos
+
+
+🎯 OBJETIVO: Testar endpoints principais de forma rápida e eficiente
+✅ RESULTADO ESPERADO: Tests: 150+ passed, 0 failed (20-25 minutos)
+
+observação importante, antes de aplicar qualquer correçao, criar qualquer função etc, funcionalidade, verificar se ja nao existe e so façar manutenção para evitar duplicações e inconcistencias 
+
+⚠️ ATENÇÃO CRÍTICA - BANCO DE DADOS:
+- NUNCA execute `prisma migrate reset` em ambiente com dados reais/usuários
+- Este comando APAGA TODOS OS DADOS do banco de dados
+- Sempre fazer backup antes de qualquer migração
+- Usar `prisma migrate dev` para criar novas migrações sem perder dados
+- Em caso de drift, usar `prisma db push` com extremo cuidado
+- Testar migrações sempre em ambiente de desenvolvimento primeiro
+
+🔒 CONEXÕES TRAVADAS - LOCKS NO BANCO:
+- CONEXÕES "idle in transaction" SEGURAM LOCKS e impedem ALTER TABLE / DDL
+- Se o Prisma db push ou scripts DDL travarem sem progresso, pode ser lock no banco
+- Para diagnosticar: `node scripts/check-locks.js` (mostra conexões presas)
+- Para matar locks: `node scripts/kill-locks.js` (termina conexões idle que estão travando)
+- Conexões do servidor backend que ficam "idle in transaction" por dias impedem alterações de schema
+- Diretriz: após matar locks, executar imediatamente o script DDL desejado
+- ⚠️ O servidor backend PRECISA estar rodando para os testes, mas conexões idle presas por dias devem ser removidas

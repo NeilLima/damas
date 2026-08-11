@@ -1,0 +1,2840 @@
+// Prisma Schema for Nexus Social
+// Database: PostgreSQL (Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// User - Conta/Autenticação
+// ============================================
+model User {
+  id        String    @id
+  email     String    @unique
+  password  String
+  username  String?   @unique
+  profile   Profile?
+  highlights Highlight[]
+  
+  // Amigos (relações)
+  requestedFriendships  Friendship[] @relation("RequesterFriendships")
+  receivedFriendships   Friendship[] @relation("AddresseeFriendships")
+  
+  // Visitantes
+  profileVisits         ProfileVisitor[] @relation("ProfileVisits")
+  visitsMade            ProfileVisitor[] @relation("VisitorVisits")
+  
+  // Sugestões
+  receivedSuggestions   FriendSuggestion[] @relation("ReceivedSuggestions")
+  suggestedTo           FriendSuggestion[] @relation("SuggestedTo")
+
+  // Depoimentos
+  writtenTestimonials   Testimonial[] @relation("WrittenTestimonials")
+  receivedTestimonials  Testimonial[] @relation("ReceivedTestimonials")
+  testimonialReplies    TestimonialReply[]
+  testimonialLikes      TestimonialLike[]
+
+  // Posts (simplificado)
+  posts                 Post[]
+  savedPosts            SavedPost[]
+  postViews             PostView[]
+  blogArticles          BlogArticle[]
+  marketplaceItems      MarketplaceItem[]
+  donations             Donation[]
+  flashEventParticipations FlashEventParticipant[]
+  mentorshipRequests    MentorshipRequest[]
+  specialistValidations SpecialistValidation[]
+
+  // Groups
+  createdGroups         Group[] @relation("CreatedGroups")
+  groupMemberships      GroupMember[]
+  groupBadges           GroupBadge[]
+  groupAlbumPhotos      GroupAlbumPhoto[]
+
+  // Events
+  createdEvents         Event[] @relation("CreatedEvents")
+  eventParticipations   EventParticipant[]
+
+  // Communities (SEPARADO de Groups)
+  createdCommunities    Community[] @relation("CreatedCommunities")
+  communityMemberships  CommunityMember[]
+  communityJoinRequests CommunityJoinRequest[]
+  sentInvitations       CommunityInvitation[] @relation("SentInvitations")
+  receivedInvitations   CommunityInvitation[] @relation("ReceivedInvitations")
+
+  // Blogs (simplificado)
+  blogs                 Blog[] @relation("UserBlogs")
+  // Removidos: blogPosts, blogComments, blogInsights (relacoes diretas)
+
+  // Sales/Marketplace
+  salesListings         SalesListing[] @relation("UserSalesListings")
+  salesFavorites        SalesFavorite[]
+  salesReviews          SalesReview[]
+  sentSalesMessages     SalesMessage[] @relation("SentSalesMessages")
+  receivedSalesMessages SalesMessage[] @relation("ReceivedSalesMessages")
+
+  // Dating
+  datingProfile         DatingProfile?
+  sentDatingLikes       DatingLike[] @relation("SentLikes")
+  receivedDatingLikes   DatingLike[] @relation("ReceivedLikes")
+  datingMatchesAsUser1  DatingMatch[] @relation("MatchUser1")
+  datingMatchesAsUser2  DatingMatch[] @relation("MatchUser2")
+  datingBlocks          DatingBlock[] @relation("Blocker")
+  blockedByDating       DatingBlock[] @relation("Blocked")
+
+  // Messenger
+  messengerConversationsAsUser1 MessengerConversation[] @relation("MessengerUser1")
+  messengerConversationsAsUser2 MessengerConversation[] @relation("MessengerUser2")
+  messengerStatus       MessengerUserStatus?
+
+  // Gallery
+  galleryAlbums         GalleryAlbum[]
+  galleryPhotos         GalleryPhoto[]
+  galleryPhotoTags      GalleryPhotoTag[]
+
+  // Notificações
+  notifications         Notification[]
+
+  // Stories
+  stories               Story[]
+  storyViews            StoryView[]
+  storySettings         StorySettings?
+
+  // Interações genéricas (reutilizável)
+  comments              Comment[]
+  reactions             Reaction[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("User")
+}
+
+// ============================================
+// Profile - Dados detalhados do usuário
+// ============================================
+model Profile {
+  id           String   @id
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  firstName    String
+  lastName     String
+  bio          String?
+  avatarUrl    String?
+  coverUrl     String?
+  countryIso2  String?
+  stateIso2    String?
+  city         String?
+  birthDate    DateTime?
+  gender       String?
+  location     String?
+  isOnline     Boolean  @default(false)
+  lastInteractionAt DateTime? // Última interação (mensagem, visita, etc)
+  level        Int      @default(1)
+  profileViews Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("Profile")
+}
+
+// ============================================
+// Highlight - Destaques do usuário (Stories permanentes)
+// ============================================
+model Highlight {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  coverImage  String
+  items       HighlightItem[]
+  viewed      Boolean         @default(false)
+  viewCount   Int             @default(0)
+  likesCount  Int             @default(0)
+  commentsCount Int           @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("Highlight")
+}
+
+// ============================================
+// HighlightItem - Itens dentro de um highlight
+// ============================================
+model HighlightItem {
+  id          String    @id @default(cuid())
+  highlightId String
+  highlight   Highlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
+  mediaUrl    String
+  mediaType   String    @default("image") // image, video
+  caption     String?
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("HighlightItem")
+}
+
+// ============================================
+// HighlightLike - Curtidas em highlights
+// ============================================
+model HighlightLike {
+  id          String    @id @default(cuid())
+  highlightId String
+  userId      String
+  createdAt   DateTime  @default(now())
+
+  @@unique([highlightId, userId])
+  @@map("HighlightLike")
+}
+
+// ============================================
+// HighlightComment - Comentários em highlights
+// ============================================
+model HighlightComment {
+  id          String    @id @default(cuid())
+  highlightId String
+  userId      String
+  content     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("HighlightComment")
+}
+
+// ============================================
+// Friendship - Relacionamentos entre usuários
+// ============================================
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(pending)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  // Relações
+  requester   User             @relation("RequesterFriendships", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User             @relation("AddresseeFriendships", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
+  @@map("Friendship")
+}
+
+enum FriendshipStatus {
+  pending    // Solicitação pendente
+  accepted   // Amigos
+  blocked    // Bloqueado
+  declined   // Recusado (soft delete)
+}
+
+// ============================================
+// ProfileVisitor - Quem visitou o perfil
+// ============================================
+model ProfileVisitor {
+  id          String   @id @default(cuid())
+  profileId   String   // Dono do perfil visitado
+  visitorId   String   // Quem visitou
+  visitedAt   DateTime @default(now())
+  count       Int      @default(1) // Contador de visitas
+  
+  // Relações
+  profile     User     @relation("ProfileVisits", fields: [profileId], references: [id], onDelete: Cascade)
+  visitor     User     @relation("VisitorVisits", fields: [visitorId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, visitorId])
+  @@index([profileId, visitedAt])
+  @@index([visitorId])
+  @@map("ProfileVisitor")
+}
+
+// ============================================
+// FriendSuggestion - Sugestões de amizade
+// ============================================
+model FriendSuggestion {
+  id            String   @id @default(cuid())
+  userId        String   // Usuário que recebe a sugestão
+  suggestedId   String   // Usuário sugerido
+  mutualCount   Int      @default(0) // Amigos em comum
+  dismissed     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  
+  // Relações
+  user          User     @relation("ReceivedSuggestions", fields: [userId], references: [id], onDelete: Cascade)
+  suggested     User     @relation("SuggestedTo", fields: [suggestedId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, suggestedId])
+  @@index([userId, dismissed])
+  @@map("FriendSuggestion")
+}
+
+// ============================================
+// Testimonial - Depoimentos entre usuários
+// ============================================
+model Testimonial {
+  id              String            @id @default(cuid())
+  authorId        String
+  recipientId     String
+  content         String
+  status          TestimonialStatus @default(pending)
+  rejectionReason String?
+  pinned          Boolean           @default(false)
+  highlighted     Boolean           @default(false)
+  hidden          Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relações
+  author   User              @relation("WrittenTestimonials", fields: [authorId], references: [id], onDelete: Cascade)
+  recipient User             @relation("ReceivedTestimonials", fields: [recipientId], references: [id], onDelete: Cascade)
+  replies  TestimonialReply[]
+  likes    TestimonialLike[]
+
+  @@index([recipientId, status])
+  @@index([authorId, status])
+  @@index([recipientId, pinned])
+  @@index([recipientId, highlighted])
+  @@map("Testimonial")
+}
+
+enum TestimonialStatus {
+  pending   // Pendente
+  approved  // Aprovado
+  rejected  // Rejeitado
+}
+
+// ============================================
+// TestimonialReply - Respostas em depoimentos
+// ============================================
+model TestimonialReply {
+  id            String   @id @default(cuid())
+  testimonialId String
+  authorId      String
+  content       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relações
+  testimonial Testimonial @relation(fields: [testimonialId], references: [id], onDelete: Cascade)
+  author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([testimonialId, createdAt])
+  @@map("TestimonialReply")
+}
+
+// ============================================
+// TestimonialLike - Curtidas em depoimentos
+// ============================================
+model TestimonialLike {
+  id            String   @id @default(cuid())
+  testimonialId String
+  userId        String
+  createdAt     DateTime @default(now())
+
+  // Relações
+  testimonial Testimonial @relation(fields: [testimonialId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([testimonialId, userId])
+  @@index([testimonialId])
+  @@index([userId])
+  @@map("TestimonialLike")
+}
+
+// ============================================
+// Notification - Notificações em tempo real
+// ============================================
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   // Destinatário
+  type      String   // friend_request, friend_accept, friend_reject, etc
+  title     String
+  message   String
+  data      Json?    // Dados extras (ex: fromUserId)
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relação com usuário
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@map("Notification")
+}
+
+// ============================================
+// FriendMetadata - Metadados de amizade (close friends, notas, etc)
+// ============================================
+model FriendMetadata {
+  id          String   @id @default(cuid())
+  userId      String   // Dono dos metadados
+  friendId    String   // Amigo referenciado
+  
+  // Configurações de relacionamento
+  bondLevel   String?  // 'close', 'friend', 'acquaintance', null
+  isPinned    Boolean  @default(false)
+  isMuted     Boolean  @default(false)
+  note        String?  // Nota privada
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Índices únicos para evitar duplicatas
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+  @@map("FriendMetadata")
+}
+
+// ============================================
+// Story - Stories temporários (24h)
+// ============================================
+model Story {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Tipo e conteúdo
+  type        StoryType @default(photo)
+  mediaUrl    String?   // URL da mídia (foto/vídeo)
+  text        String?   // Texto do story
+  
+  // Estilos e configurações (JSON flexível)
+  style       Json?     // Cores, fontes, posição, etc
+  stickers    Json?     // Adesivos/emoji posicionados
+  music       Json?     // Música anexada
+  audio       Json?     // Áudio gravado
+  interactive Json?     // Enquete, pergunta, quiz, etc
+  
+  // Metadados
+  durationSec Int     @default(5) // Duração em segundos para auto-advance
+  isArchived  Boolean @default(false) // Arquivado após 24h
+  
+  // Contadores
+  viewCount   Int     @default(0)
+  reactionCount Int   @default(0)
+  replyCount  Int     @default(0)
+  
+  // Relações
+  views       StoryView[]
+  mentions    StoryMention[]
+  
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime // 24h após criação
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([userId, isArchived, createdAt])
+  @@index([expiresAt])
+  @@map("Story")
+}
+
+enum StoryType {
+  photo
+  video
+  text
+  podcast
+  audio
+}
+
+// ============================================
+// StoryView - Quem visualizou o story
+// ============================================
+model StoryView {
+  id        String   @id @default(cuid())
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  viewerId  String   // Quem visualizou
+  user      User     @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+  viewedAt  DateTime @default(now())
+  
+  @@unique([storyId, viewerId])
+  @@index([storyId, viewedAt])
+  @@index([viewerId, viewedAt])
+  @@map("StoryView")
+}
+
+// ============================================
+// StoryMention - Menções em stories
+// ============================================
+model StoryMention {
+  id          String   @id @default(cuid())
+  storyId     String
+  story       Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  mentionedId String   // Usuário mencionado
+  positionX   Float    // Posição X (0-1)
+  positionY   Float    // Posição Y (0-1)
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([storyId, mentionedId])
+  @@index([mentionedId, createdAt])
+  @@map("StoryMention")
+}
+
+// ============================================
+// StorySettings - Configurações de privacidade do usuário
+// ============================================
+model StorySettings {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Privacidade
+  visibility      StoryVisibility @default(friends) // Quem pode ver
+  allowReplies    StoryReplyPermission @default(friends) // Quem pode responder
+  allowReactions  Boolean @default(true)
+  allowShares     Boolean @default(true)
+  
+  // Ocultar stories de
+  hideFrom        String[] // Array de userIds
+  
+  // Close friends
+  closeFriends    String[] // Array de userIds (best friends)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("StorySettings")
+}
+
+enum StoryVisibility {
+  public      // Todos
+  friends     // Amigos apenas
+  close_friends // Melhores amigos apenas
+}
+
+enum StoryReplyPermission {
+  everyone    // Todos
+  friends     // Amigos
+  close_friends // Melhores amigos
+  none        // Ninguém
+}
+
+// ============================================
+// SavedStory - Stories salvos pelo usuário
+// ============================================
+model SavedStory {
+  id          String   @id @default(cuid())
+  userId      String
+  storyId     String
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([userId, storyId])
+  @@index([userId, createdAt])
+  @@index([storyId])
+  @@map("SavedStory")
+}
+
+// ============================================
+// StoryReport - Denúncias de stories
+// ============================================
+model StoryReport {
+  id          String   @id @default(cuid())
+  storyId     String
+  reporterId  String   // Quem reportou
+  reason      String   // Motivo da denúncia
+  status      StoryReportStatus @default(pending)
+  
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+  
+  @@index([storyId, status])
+  @@index([reporterId, createdAt])
+  @@index([status, createdAt])
+  @@map("StoryReport")
+}
+
+enum StoryReportStatus {
+  pending    // Pendente de análise
+  reviewed   // Em análise
+  resolved   // Resolvido
+  dismissed  // Descartado
+}
+
+// ============================================
+// Comment - Comentários genéricos (reutilizável)
+// ============================================
+model Comment {
+  id          String   @id @default(cuid())
+  entityType  String   // 'post', 'story', 'photo', 'video', 'product', 'comment'
+  entityId    String   // ID da entidade sendo comentada
+  parentId    String?  // Para respostas (threaded), nullable
+  userId      String   // Quem comentou
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content     String
+  attachments Json?    // Imagens/vídeos anexos (opcional)
+  isEdited    Boolean  @default(false)
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relação com parent (respostas)
+  parent      Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[] @relation("CommentReplies")
+
+  @@index([entityType, entityId])
+  @@index([entityType, entityId, createdAt])
+  @@index([userId, createdAt])
+  @@index([parentId])
+  @@map("Comment")
+}
+
+// ============================================
+// Reaction - Reações/Curtidas em entidades
+// ============================================
+model Reaction {
+  id          String   @id @default(cuid())
+  userId      String
+  entityType  String   @map("entity_type") // post, story, photo, video, product, comment
+  entityId    String   @map("entity_id")
+  type        String   @default("like") // like, love, care, haha, wow, sad, angry, fire, clap, party, idea, support, cool, mindblown, think, pray, star, hundred, wink, heartEyes, kiss, sleepy, sick, cry, rage, grin, smile, laughTears, relieved, drool, tongue, surprised, confused, neutral, rollingEyes, shh, zany, dizzy, hot, cold, nervous, thinkingHard, smirk, sunglasses, halo, nerd, monocle, partyFace, cowboy, shocked, scream, yawn, mask, vomit, money, devil, angel, clown, melting, salute, handOverMouth, zipper, poop, skull, robot, alien, coffee, music, book, camera, trophy, rocket, lightning, flower, sun, moon, rainbow, check, x, question
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relações
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([entityType, entityId, userId], name: "entityType_entityId_userId")
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@map("Reaction")
+}
+
+enum PostMediaType {
+  TEXT
+  PHOTO
+  VIDEO
+  AUDIO
+  POLL
+  ALBUM
+  LOCATION
+  FEELING
+  STYLE
+  STICKER
+  ACTION
+  STAKE
+  MARKETPLACE
+  DONATION
+  FLASH_EVENT
+  MUSIC
+  BLOG_CREATED
+  BLOG_ARTICLE
+  SHARED
+}
+
+enum PostStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+  HIDDEN
+}
+
+enum VibeType {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  CONTROVERSIAL
+  TRENDING
+}
+
+// ============================================
+// Blog - Blogs de usuários
+// ============================================
+model Blog {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user  User   @relation("UserBlogs", fields: [userId], references: [id], onDelete: Cascade)
+  posts BlogPost[]
+  post  Post?    @relation("BlogToPost")
+  // Removidas referências quebradas: categories, topics, advertisements, settings, subscribers, socialStats
+
+  @@index([userId])
+  @@map("Blog")
+}
+
+// ============================================
+// BlogPost - Artigos de blog
+// ============================================
+model BlogPost {
+  id          String   @id @default(cuid())
+  blogId      String
+  title       String
+  content     String  @db.Text
+  excerpt     String?
+  coverUrl    String? @map("cover_url")
+  readTime    Int?    @map("read_time")
+  tags        String[]
+  status      String  @default("published")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  blog  Blog   @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  // Removidas referências quebradas: categories (BlogPostCategory)
+  // Removidas referências quebradas: blogTags, comments, insights, sponsorship
+
+  // Interligação com Post (quando artigo é publicado no feed) - relação inversa no Post
+  postId      String?   @unique @map("post_id")
+  post        Post?     @relation("BlogPostToPost")
+
+  @@index([blogId, createdAt])
+  @@map("BlogPost")
+}
+
+// ============================================
+// Post - Posts do feed (15 tipos diferentes)
+// ============================================
+model Post {
+  id          String        @id @default(cuid())
+  userId      String
+  content     String?
+  caption     String?       @map("media_caption")
+  mediaType   PostMediaType
+  status      PostStatus    @default(ACTIVE)
+  
+  // Metadados gerais
+  isPinned    Boolean       @default(false)
+  isShared    Boolean       @default(false)
+  sharedPostId String?      @map("shared_post_id")
+  
+  // Campos de contagem (denormalizados para performance)
+  viewsCount    Int @default(0)
+  totalLikes    Int @default(0)
+  shareCount    Int @default(0)
+  
+  // Campos de reputação e vibe
+  reputationPoints Int? @map("reputation_points")
+  vibe             VibeType?
+  insightText      String? @map("insight_text")
+  isHumanValidated Boolean @default(false) @map("is_human_validated")
+  canOfferMentorship Boolean @default(false) @map("can_offer_mentorship")
+  
+  // Metadados adicionais (JSON)
+  metadata         Json?    @map("metadata")
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt DateTime? // Para flash events
+  
+  // Relations - Posts
+  author        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sharedPost    Post?         @relation("PostShares", fields: [sharedPostId], references: [id])
+  sharedByPosts Post[]        @relation("PostShares")
+  
+  // Relations - Conteúdo (simplificado)
+  // Removidas referências quebradas: photos, videos
+
+  // Relations - Tipos específicos (existentes)
+  marketplace   PostMarketplace?
+  donation      PostDonation?
+  flashEvent    PostFlashEvent?
+  blogCreated   BlogCreated?
+  blogArticle   BlogArticle?
+  salesListing  SalesListing? @relation("SalesPost")
+  
+  // Interligações
+  groupPosts    GroupPost[]
+  communityPosts CommunityPost[]
+  
+  // Relations - Interações
+  savedBy       SavedPost[]
+  viewedBy      PostView[]
+  
+  // Relations - Especialistas e validação
+  validations   SpecialistValidation[]
+  mentorships MentorshipRequest[]
+  
+  // Interligação com Blog/BlogPost (quando blog é criado no feed) - relação inversa no Blog/BlogPost
+  blogId        String?   @unique @map("blog_id")
+  blog          Blog?     @relation("BlogToPost", fields: [blogId], references: [id])
+  blogPostId    String?   @unique @map("blog_post_id")
+  blogPost      BlogPost? @relation("BlogPostToPost", fields: [blogPostId], references: [id])
+  
+  // Interligação com Gallery (quando foto é publicada no feed) - relação inversa no GalleryPhoto
+  galleryPhotoId String?   @unique @map("gallery_photo_id")
+  galleryPhoto  GalleryPhoto? @relation("GalleryPhotoToPost", fields: [galleryPhotoId], references: [id])
+
+  // Novas Relações
+  location      PostLocation?
+  poll          PostPoll?
+  media         PostMedia[]
+
+  @@index([userId, createdAt])
+  @@index([isPinned, createdAt])
+  @@map("Post")
+}
+
+// ============================================
+// PostLocation - Localização de posts
+// ============================================
+model PostLocation {
+  id        String  @id @default(cuid())
+  postId    String  @unique
+  name      String
+  address   String?
+  latitude  Float
+  longitude Float
+  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("PostLocation")
+}
+
+// ============================================
+// PostMedia - Mídias de posts (fotos, vídeos, áudios extras)
+// ============================================
+model PostMedia {
+  id           String   @id @default(cuid())
+  postId       String
+  type         String   // image, video, audio
+  url          String
+  thumbnailUrl String?  @map("thumbnail_url")
+  width        Int?
+  height       Int?
+  duration     Int?     // segundos
+  order        Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("PostMedia")
+}
+
+// ============================================
+// PostPoll - Enquetes de posts
+// ============================================
+model PostPoll {
+  id        String   @id @default(cuid())
+  postId    String   @unique
+  question  String
+  endsAt    DateTime? @map("ends_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  post    Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  options PostPollOption[]
+
+  @@map("PostPoll")
+}
+
+model PostPollOption {
+  id     String @id @default(cuid())
+  pollId String
+  text   String
+  votes  Int    @default(0)
+  
+  poll PostPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@map("PostPollOption")
+}
+
+
+// ============================================
+// BlogCreated - Blog criado no feed
+// ============================================
+model BlogCreated {
+  id        String  @id @default(cuid())
+  postId    String  @unique
+  blogId    String
+  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("BlogCreated")
+}
+
+// ============================================
+// BlogArticle - Artigo de blog publicado no feed
+// ============================================
+model BlogArticle {
+  id          String  @id @default(cuid())
+  postId      String  @unique
+  blogId      String
+  userId      String
+  title       String
+  content     String  @db.Text
+  excerpt     String?
+  coverUrl    String? @map("cover_url")
+  readTime    Int?    @map("read_time")
+  tags        String[]
+  status      String  @default("published")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([blogId, createdAt])
+  @@map("BlogArticle")
+}
+
+// ============================================
+// SpecialistValidation - Validação Especialista
+// ============================================
+model SpecialistValidation {
+  id            String   @id @default(cuid())
+  postId        String
+  specialistId  String   @map("specialist_id")
+  validatedAt   DateTime @default(now()) @map("validated_at")
+  expertise     String[]
+  
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  specialist User @relation(fields: [specialistId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, specialistId])
+  @@map("SpecialistValidation")
+}
+
+// ============================================
+// Marketplace do Post
+// ============================================
+model PostMarketplace {
+  id          String               @id @default(cuid())
+  postId      String               @unique
+  price       Float
+  currency    String               @default("BRL")
+  condition   String               @default("new")
+  link        String?
+  buttonText  String?              @map("button_text")
+  stock       Int?
+  soldCount   Int                  @default(0) @map("sold_count")
+  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  items MarketplaceItem[]
+
+  @@map("PostMarketplace")
+}
+
+model MarketplaceItem {
+  id          String   @id @default(cuid())
+  marketplaceId String
+  buyerId     String
+  quantity    Int      @default(1)
+  totalPrice  Float
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  
+  marketplace PostMarketplace @relation(fields: [marketplaceId], references: [id], onDelete: Cascade)
+  buyer       User            @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@map("MarketplaceItem")
+}
+
+// ============================================
+// Doações do Post
+// ============================================
+model PostDonation {
+  id                String  @id @default(cuid())
+  postId            String  @unique
+  goal              Float
+  current           Float   @default(0)
+  currency          String  @default("BRL")
+  causeTitle        String  @map("cause_title")
+  organizationName  String? @map("organization_name")
+  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  donations Donation[]
+
+  @@map("PostDonation")
+}
+
+model Donation {
+  id          String   @id @default(cuid())
+  donationId  String   @map("post_donation_id")
+  donorId     String   @map("donor_id")
+  amount      Float
+  message     String?
+  isAnonymous Boolean  @default(false) @map("is_anonymous")
+  createdAt   DateTime @default(now())
+  
+  postDonation PostDonation @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  donor        User         @relation(fields: [donorId], references: [id], onDelete: Cascade)
+
+  @@map("Donation")
+}
+
+// ============================================
+// Flash Events do Post
+// ============================================
+model PostFlashEvent {
+  id          String           @id @default(cuid())
+  postId      String           @unique
+  type        String           @default("quiz")
+  status      String           @default("active")
+  duration    Int              @default(15)
+  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  participants FlashEventParticipant[]
+
+  @@map("PostFlashEvent")
+}
+
+model FlashEventParticipant {
+  id          String   @id @default(cuid())
+  eventId     String
+  userId      String
+  joinedAt    DateTime @default(now())
+  leftAt      DateTime?
+  
+  event PostFlashEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("FlashEventParticipant")
+}
+
+// ============================================
+// Mentoria do Post
+// ============================================
+model MentorshipRequest {
+  id          String   @id @default(cuid())
+  postId      String
+  requesterId String   @map("requester_id")
+  mentorId    String
+  topic       String
+  status      String   @default("pending")
+  message     String?
+  createdAt   DateTime @default(now())
+  
+  post      Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  requester User @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@map("MentorshipRequest")
+}
+
+// ============================================
+// SavedPost - Posts salvos pelo usuário
+// ============================================
+model SavedPost {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  savedAt   DateTime @default(now())
+  collectionName String?
+  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("SavedPost")
+}
+
+// ============================================
+// PostView - Visualizações de posts
+// ============================================
+model PostView {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  viewedAt  DateTime @default(now())
+  duration  Int?     // Tempo de visualização em segundos
+  
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId, viewedAt])
+  @@index([userId, viewedAt])
+  @@map("PostView")
+}
+
+// ============================================
+// GROUPS MODULE - Grupos e Comunidades
+// ============================================
+
+enum GroupType {
+  PUBLIC
+  PRIVATE
+  SECRET
+}
+
+enum GroupRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+  GUEST
+}
+
+enum GroupRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum GroupMemberStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+  LEFT
+}
+
+// ============================================
+// Group - Grupos/Comunidades
+// ============================================
+model Group {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  category    String
+  
+  // Fotos
+  coverPhoto   String?  @map("cover_photo")
+  profilePhoto String?  @map("profile_photo")
+  
+  // Configurações
+  type        GroupType @default(PUBLIC)
+  isPrivate   Boolean   @default(false) @map("is_private")
+  isVerified  Boolean   @default(false) @map("is_verified")
+  
+  // Gamificação
+  level       Int       @default(1)
+  xp          Int       @default(0)
+  
+  // Contadores (denormalizados)
+  memberCount Int       @default(0) @map("member_count")
+  postCount   Int       @default(0) @map("post_count")
+  
+  // Criador
+  creatorId   String    @map("creator_id")
+  creator     User      @relation("CreatedGroups", fields: [creatorId], references: [id], onDelete: Cascade)
+  
+  // Regras/Configurações
+  requireApproval Boolean @default(false) @map("require_approval")
+  allowPosts      Boolean @default(true) @map("allow_posts")
+  allowComments   Boolean @default(true) @map("allow_comments")
+  allowEvents     Boolean @default(true) @map("allow_events")
+  allowAlbums     Boolean @default(true) @map("allow_albums")
+  
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  members     GroupMember[]
+  requests    GroupRequest[]
+  posts       GroupPost[]
+  tags        GroupTag[]
+  events      GroupEvent[]
+  albums      GroupAlbum[]
+  settings    GroupSettings?
+  notifications GroupNotification[]
+  gamification GroupGamification?
+
+  @@index([category])
+  @@index([type])
+  @@index([isVerified])
+  @@index([createdAt])
+  @@map("Group")
+}
+
+// ============================================
+// GroupMember - Membros do Grupo
+// ============================================
+model GroupMember {
+  id        String           @id @default(cuid())
+  groupId   String           @map("group_id")
+  userId    String           @map("user_id")
+  role      GroupRole        @default(MEMBER)
+  status    GroupMemberStatus @default(ACTIVE)
+  
+  // Gamificação no grupo
+  xp        Int              @default(0)
+  level     Int              @default(1)
+  
+  // Contribuições
+  postCount    Int           @default(0) @map("post_count")
+  commentCount Int           @default(0) @map("comment_count")
+  
+  // Notificações
+  notificationsEnabled Boolean @default(true) @map("notifications_enabled")
+  notificationFrequency String @default("all") @map("notification_frequency") // all, mentions, none
+  
+  joinedAt  DateTime         @default(now()) @map("joined_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+  
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("GroupMember")
+}
+
+// ============================================
+// GroupRequest - Pedidos para entrar
+// ============================================
+model GroupRequest {
+  id          String            @id @default(cuid())
+  groupId     String            @map("group_id")
+  userId      String            @map("user_id")
+  status      GroupRequestStatus @default(PENDING)
+  message     String?
+  
+  // Quem processou o pedido
+  processedBy String?           @map("processed_by")
+  processedAt DateTime?         @map("processed_at")
+  
+  createdAt   DateTime          @default(now()) @map("created_at")
+  
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId, status])
+  @@map("GroupRequest")
+}
+
+// ============================================
+// GroupTag - Tags do Grupo
+// ============================================
+model GroupTag {
+  id      String @id @default(cuid())
+  groupId String @map("group_id")
+  tag     String
+  
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, tag])
+  @@map("GroupTag")
+}
+
+// ============================================
+// GroupPost - Relação entre Post e Grupo
+// ============================================
+model GroupPost {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  postId      String   @map("post_id")
+  userId      String   @map("user_id")
+  isPinned    Boolean  @default(false) @map("is_pinned")
+  pinnedAt    DateTime? @map("pinned_at")
+  pinnedBy    String?  @map("pinned_by")
+  isApproved  Boolean  @default(true) @map("is_approved")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  post  Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, postId])
+  @@index([groupId, createdAt])
+  @@map("GroupPost")
+}
+
+// ============================================
+// GroupEvent - Eventos do Grupo
+// ============================================
+model GroupEvent {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  userId      String   @map("user_id")
+  title       String
+  description String?
+  location    String?
+  
+  startDate   DateTime @map("start_date")
+  endDate     DateTime? @map("end_date")
+  
+  // Configurações
+  isOnline    Boolean  @default(false) @map("is_online")
+  meetingLink String?  @map("meeting_link")
+  maxAttendees Int?    @map("max_attendees")
+  
+  // Contadores
+  attendeesCount Int  @default(0) @map("attendees_count")
+  
+  status      String   @default("upcoming") // upcoming, ongoing, completed, cancelled
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  attendees GroupEventAttendee[]
+
+  @@index([groupId, startDate])
+  @@map("GroupEvent")
+}
+
+model GroupEventAttendee {
+  id      String   @id @default(cuid())
+  eventId String   @map("event_id")
+  userId  String   @map("user_id")
+  status  String   @default("going") // going, maybe, not_going
+  joinedAt DateTime @default(now()) @map("joined_at")
+  
+  event GroupEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("GroupEventAttendee")
+}
+
+// ============================================
+// GroupAlbum - Álbuns do Grupo
+// ============================================
+model GroupAlbum {
+  id          String  @id @default(cuid())
+  groupId     String  @map("group_id")
+  userId      String  @map("user_id")
+  name        String
+  description String?
+  coverPhoto  String? @map("cover_photo")
+  photosCount Int     @default(0) @map("photos_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  photos GroupAlbumPhoto[]
+
+  @@index([groupId])
+  @@map("GroupAlbum")
+}
+
+model GroupAlbumPhoto {
+  id       String   @id @default(cuid())
+  albumId  String   @map("album_id")
+  userId   String   @map("user_id")
+  url      String
+  caption  String?
+  order    Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  album GroupAlbum @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([albumId, order])
+  @@index([userId])
+  @@map("GroupAlbumPhoto")
+}
+
+// ============================================
+// GroupSettings - Configurações do Grupo
+// ============================================
+model GroupSettings {
+  id        String  @id @default(cuid())
+  groupId   String  @unique @map("group_id")
+  
+  // Regras
+  rules     String? // Descrição das regras
+  welcomeMessage String? @map("welcome_message")
+  
+  // Moderation
+  autoApprovePosts Boolean @default(true) @map("auto_approve_posts")
+  autoApproveMembers Boolean @default(true) @map("auto_approve_members")
+  restrictPosting Boolean @default(false) @map("restrict_posting")
+  restrictComments Boolean @default(false) @map("restrict_comments")
+  
+  // Privacidade
+  searchable      Boolean @default(true)
+  membersVisible  Boolean @default(true) @map("members_visible")
+  postsVisible    Boolean @default(true) @map("posts_visible")
+  
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("GroupSettings")
+}
+
+// ============================================
+// GroupNotification - Notificações do Grupo
+// ============================================
+model GroupNotification {
+  id        String   @id @default(cuid())
+  groupId   String   @map("group_id")
+  userId    String   @map("user_id")
+  type      String   // new_post, new_member, event_reminder, etc
+  title     String
+  message   String
+  data      Json?    // Dados extras
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([groupId, createdAt])
+  @@map("GroupNotification")
+}
+
+// ============================================
+// GroupGamification - Gamificação do Grupo
+// ============================================
+model GroupGamification {
+  id        String   @id @default(cuid())
+  groupId   String   @unique @map("group_id")
+  
+  // Metas
+  dailyGoal Int      @default(5) @map("daily_goal")
+  weeklyGoal Int     @default(25) @map("weekly_goal")
+  
+  // Recompensas
+  pointsPerPost Int    @default(10) @map("points_per_post")
+  pointsPerComment Int @default(5) @map("points_per_comment")
+  pointsPerReaction Int @default(2) @map("points_per_reaction")
+  pointsPerEvent Int   @default(20) @map("points_per_event")
+  
+  // Badges (JSON)
+  badges    Json?    // Configuração de badges disponíveis
+  
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("GroupGamification")
+}
+
+// ============================================
+// GroupBadge - Badges individuais dos membros
+// ============================================
+model GroupBadge {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  userId      String   @map("user_id")
+  badgeType   String   @map("badge_type") // top_contributor, early_member, event_organizer, etc
+  awardedAt   DateTime @default(now()) @map("awarded_at")
+  awardedBy   String?  @map("awarded_by")
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId, badgeType])
+  @@map("GroupBadge")
+}
+
+// ============================================
+// EVENTS MODULE - Eventos
+// ============================================
+
+enum EventType {
+  PUBLIC
+  PRIVATE
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum EventParticipantStatus {
+  GOING
+  MAYBE
+  NOT_GOING
+  PENDING
+}
+
+// ============================================
+// Event - Eventos/Encontros
+// ============================================
+model Event {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  
+  // Data/Hora
+  startDate   DateTime  @map("start_date")
+  endDate     DateTime? @map("end_date")
+  timezone    String    @default("America/Sao_Paulo")
+  
+  // Localização
+  isOnline    Boolean   @default(false) @map("is_online")
+  locationText String?   @map("location_text")
+  address     String?
+  city        String?
+  state       String?
+  country     String?
+  latitude    Float?
+  longitude   Float?
+  meetingLink String?   @map("meeting_link")
+  
+  // Mídia
+  coverImage  String?   @map("cover_image")
+  
+  // Configurações
+  type        EventType @default(PUBLIC)
+  status      EventStatus @default(PUBLISHED)
+  maxAttendees Int?     @map("max_attendees")
+  requireApproval Boolean @default(false) @map("require_approval")
+  
+  // Contadores (denormalizados)
+  participantsCount Int @default(0) @map("participants_count")
+  interestedCount   Int @default(0) @map("interested_count")
+  
+  // Criador
+  authorId    String    @map("author_id")
+  author      User      @relation("CreatedEvents", fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  categories  EventCategory[]
+  participants EventParticipant[]
+  settings    EventSettings?
+  reminders   EventReminder[]
+  reports     EventReport[]
+
+  @@index([startDate])
+  @@index([type])
+  @@index([status])
+  @@index([authorId])
+  @@map("Event")
+}
+
+// ============================================
+// EventCategory - Categorias do Evento
+// ============================================
+model EventCategory {
+  id      String @id @default(cuid())
+  eventId String @map("event_id")
+  name    String
+  
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, name])
+  @@map("EventCategory")
+}
+
+// ============================================
+// EventParticipant - Participantes
+// ============================================
+model EventParticipant {
+  id        String   @id @default(cuid())
+  eventId   String   @map("event_id")
+  userId    String   @map("user_id")
+  status    EventParticipantStatus @default(GOING)
+  joinedAt  DateTime @default(now()) @map("joined_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@map("EventParticipant")
+}
+
+// ============================================
+// EventSettings - Configurações do Evento
+// ============================================
+model EventSettings {
+  id        String  @id @default(cuid())
+  eventId   String  @unique @map("event_id")
+  
+  // Permissões
+  allowComments   Boolean @default(true) @map("allow_comments")
+  allowPhotos     Boolean @default(true) @map("allow_photos")
+  allowSharing    Boolean @default(true) @map("allow_sharing")
+  
+  // Privacidade
+  showAttendees   Boolean @default(true) @map("show_attendees")
+  searchable      Boolean @default(true)
+  
+  // Notificações
+  sendReminders   Boolean @default(true) @map("send_reminders")
+  reminderHours   Int[]   @default([24, 2]) @map("reminder_hours")
+  
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("EventSettings")
+}
+
+// ============================================
+// EventReminder - Lembretes agendados
+// ============================================
+model EventReminder {
+  id        String   @id @default(cuid())
+  eventId   String   @map("event_id")
+  userId    String   @map("user_id")
+  scheduledFor DateTime @map("scheduled_for")
+  sent      Boolean  @default(false)
+  sentAt    DateTime?
+  
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scheduledFor])
+  @@map("EventReminder")
+}
+
+// ============================================
+// EventReport - Denúncias de eventos
+// ============================================
+model EventReport {
+  id          String   @id @default(cuid())
+  eventId     String   @map("event_id")
+  reporterId  String   @map("reporter_id")
+  reason      String
+  description String?
+  status      String   @default("pending") // pending, reviewed, resolved
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  resolvedAt  DateTime?
+  
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, status])
+  @@map("EventReport")
+}
+
+// ============================================
+// COMMUNITIES MODULE - Comunidades (SEPARADO de Groups)
+// ============================================
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum CommunityType {
+  PUBLIC
+  PRIVATE
+  SECRET
+}
+
+enum CommunityMemberRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum CommunityJoinStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CommunityMemberStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+  LEFT
+}
+
+// ============================================
+// Community - Comunidades
+// ============================================
+model Community {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  category    String?
+  
+  // Fotos
+  coverPhoto   String?  @map("cover_photo")
+  profilePhoto String?  @map("profile_photo")
+  
+  // Configurações
+  type        CommunityType @default(PUBLIC)
+  isVerified  Boolean   @default(false) @map("is_verified")
+  
+  // Gamificação
+  level       Int       @default(1)
+  xp          Int       @default(0)
+  
+  // Contadores (denormalizados)
+  memberCount Int       @default(0) @map("member_count")
+  postCount   Int       @default(0) @map("post_count")
+  
+  // Criador
+  creatorId   String    @map("creator_id")
+  creator     User      @relation("CreatedCommunities", fields: [creatorId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  members     CommunityMember[]
+  joinRequests CommunityJoinRequest[]
+  invitations CommunityInvitation[]
+  posts       CommunityPost[]
+  tags        CommunityTag[]
+  rules       CommunityRule[]
+  discussions CommunityDiscussion[]
+  related     CommunityRelated[]
+  settings    CommunitySettings?
+
+  @@index([category])
+  @@index([type])
+  @@index([isVerified])
+  @@index([createdAt])
+  @@map("Community")
+}
+
+// ============================================
+// CommunityMember - Membros da Comunidade
+// ============================================
+model CommunityMember {
+  id        String           @id @default(cuid())
+  communityId String         @map("community_id")
+  userId    String           @map("user_id")
+  role      CommunityMemberRole @default(MEMBER)
+  status    CommunityMemberStatus @default(ACTIVE)
+  
+  // Gamificação na comunidade
+  xp        Int              @default(0)
+  level     Int              @default(1)
+  
+  // Contribuições
+  postCount    Int           @default(0) @map("post_count")
+  commentCount Int           @default(0) @map("comment_count")
+  
+  joinedAt  DateTime         @default(now()) @map("joined_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+  
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@index([userId])
+  @@map("CommunityMember")
+}
+
+// ============================================
+// CommunityJoinRequest - Pedidos para entrar
+// ============================================
+model CommunityJoinRequest {
+  id          String            @id @default(cuid())
+  communityId String            @map("community_id")
+  userId      String            @map("user_id")
+  status      CommunityJoinStatus @default(PENDING)
+  message     String?
+  
+  processedBy String?           @map("processed_by")
+  processedAt DateTime?       @map("processed_at")
+  
+  createdAt   DateTime          @default(now()) @map("created_at")
+  
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@index([userId])
+  @@index([communityId, status])
+  @@map("CommunityJoinRequest")
+}
+
+// ============================================
+// CommunityInvitation - Convites para entrar
+// ============================================
+model CommunityInvitation {
+  id          String            @id @default(cuid())
+  communityId String            @map("community_id")
+  invitedBy   String            @map("invited_by")
+  invitedUser String            @map("invited_user")
+  status      InvitationStatus   @default(PENDING)
+  message     String?
+  
+  processedBy String?           @map("processed_by")
+  processedAt DateTime?       @map("processed_at")
+  
+  createdAt   DateTime          @default(now()) @map("created_at")
+  expiresAt   DateTime?         @map("expires_at")
+  
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  inviter   User     @relation("SentInvitations", fields: [invitedBy], references: [id], onDelete: Cascade)
+  invited   User     @relation("ReceivedInvitations", fields: [invitedUser], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, invitedUser])
+  @@index([invitedBy])
+  @@index([invitedUser])
+  @@index([communityId, status])
+  @@map("CommunityInvitation")
+}
+
+// ============================================
+// CommunityTag - Tags da Comunidade
+// ============================================
+model CommunityTag {
+  id          String @id @default(cuid())
+  communityId String @map("community_id")
+  tag         String
+  
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, tag])
+  @@map("CommunityTag")
+}
+
+// ============================================
+// CommunityPost - Posts na Comunidade
+// ============================================
+model CommunityPost {
+  id          String   @id @default(cuid())
+  communityId String   @map("community_id")
+  postId      String   @map("post_id")
+  userId      String   @map("user_id")
+  isPinned    Boolean  @default(false) @map("is_pinned")
+  pinnedAt    DateTime? @map("pinned_at")
+  isApproved  Boolean  @default(true) @map("is_approved")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  post  Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, postId])
+  @@index([communityId, createdAt])
+  @@map("CommunityPost")
+}
+
+// ============================================
+// CommunityRule - Regras da Comunidade
+// ============================================
+model CommunityRule {
+  id          String   @id @default(cuid())
+  communityId String   @map("community_id")
+  title       String
+  description String
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@index([communityId, order])
+  @@map("CommunityRule")
+}
+
+// ============================================
+// CommunityDiscussion - Discussões da Comunidade
+// ============================================
+model CommunityDiscussion {
+  id          String   @id @default(cuid())
+  communityId String   @map("community_id")
+  userId      String   @map("user_id")
+  title       String
+  content     String
+  
+  // Contadores
+  likeCount    Int     @default(0) @map("like_count")
+  commentCount Int     @default(0) @map("comment_count")
+  
+  isPinned    Boolean @default(false) @map("is_pinned")
+  isLocked    Boolean @default(false) @map("is_locked")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  comments CommunityDiscussionComment[]
+
+  @@index([communityId, createdAt])
+  @@map("CommunityDiscussion")
+}
+
+// ============================================
+// CommunityDiscussionComment - Comentários em discussões
+// ============================================
+model CommunityDiscussionComment {
+  id           String   @id @default(cuid())
+  discussionId String   @map("discussion_id")
+  userId       String   @map("user_id")
+  parentId     String?  @map("parent_id")
+  content      String
+  
+  likeCount    Int      @default(0) @map("like_count")
+  
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  
+  discussion CommunityDiscussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  parent  CommunityDiscussionComment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies CommunityDiscussionComment[] @relation("CommentReplies")
+
+  @@index([discussionId, createdAt])
+  @@map("CommunityDiscussionComment")
+}
+
+// ============================================
+// CommunityRelated - Comunidades relacionadas
+// ============================================
+model CommunityRelated {
+  id            String @id @default(cuid())
+  communityId   String @map("community_id")
+  relatedId     String @map("related_id")
+  relationType  String @default("similar") @map("relation_type")
+  
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, relatedId])
+  @@map("CommunityRelated")
+}
+
+// ============================================
+// CommunitySettings - Configurações da Comunidade
+// ============================================
+model CommunitySettings {
+  id        String  @id @default(cuid())
+  communityId String @unique @map("community_id")
+  
+  // Regras
+  welcomeMessage String? @map("welcome_message")
+  
+  // Moderação
+  autoApprovePosts Boolean @default(true) @map("auto_approve_posts")
+  autoApproveMembers Boolean @default(true) @map("auto_approve_members")
+  restrictPosting Boolean @default(false) @map("restrict_posting")
+  restrictComments Boolean @default(false) @map("restrict_comments")
+  
+  // Privacidade
+  searchable      Boolean @default(true)
+  membersVisible  Boolean @default(true) @map("members_visible")
+  postsVisible    Boolean @default(true) @map("posts_visible")
+  
+  // Discussões
+  allowDiscussions Boolean @default(true) @map("allow_discussions")
+  
+  // Convites
+  allowInvites Boolean @default(true) @map("allow_invites")
+  
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@map("CommunitySettings")
+}
+
+// ============================================
+// SALES MODULE - Marketplace/Classificados
+// ============================================
+
+enum SalesListingStatus {
+  ACTIVE
+  SOLD
+  RESERVED
+  EXPIRED
+  DRAFT
+}
+
+enum SalesListingType {
+  GENERAL
+  REAL_ESTATE
+  VEHICLES
+  ELECTRONICS
+  FASHION
+  HOME
+  SPORTS
+}
+
+enum SalesRealEstateDealType {
+  RENT
+  SALE
+}
+
+enum SalesRealEstatePropertyType {
+  APARTMENT
+  HOUSE
+  KITNET
+  LAND
+  COMMERCIAL
+}
+
+enum SalesVehicleFuelType {
+  GASOLINE
+  DIESEL
+  ELECTRIC
+  HYBRID
+}
+
+enum SalesHomeRoomType {
+  LIVING
+  BEDROOM
+  KITCHEN
+  OFFICE
+}
+
+enum SalesHomeMaterialType {
+  WOOD
+  METAL
+  FABRIC
+  GLASS
+}
+
+enum SalesSportType {
+  SOCCER
+  CYCLING
+  GYM
+  RUNNING
+}
+
+// ============================================
+// SalesListing - Anúncio/Produto
+// ============================================
+model SalesListing {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  
+  // Identificação
+  title       String
+  description String    @db.Text
+  price       Float
+  currency    String    @default("BRL")
+  
+  // Mídia
+  images      SalesListingImage[]
+  
+  // Categorização
+  type        SalesListingType @default(GENERAL)
+  category    String
+  condition   String // new, used, like_new, etc
+  
+  // Localização
+  location    String
+  address     String?
+  city        String?
+  state       String?
+  zipCode     String?   @map("zip_code")
+  latitude    Float?
+  longitude   Float?
+  
+  // Contadores (denormalizados)
+  viewsCount  Int       @default(0) @map("views_count")
+  likesCount  Int       @default(0) @map("likes_count")
+  favoritesCount Int    @default(0) @map("favorites_count")
+  
+  // Status
+  status      SalesListingStatus @default(ACTIVE)
+  featured    Boolean   @default(false)
+  
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  expiresAt   DateTime? @map("expires_at")
+  soldAt      DateTime? @map("sold_at")
+  
+  // Relations
+  user        User      @relation("UserSalesListings", fields: [userId], references: [id], onDelete: Cascade)
+  realEstate  SalesRealEstate?
+  vehicle     SalesVehicle?
+  electronics SalesElectronics?
+  fashion     SalesFashion?
+  home        SalesHome?
+  sports      SalesSports?
+  favorites   SalesFavorite[]
+  reviews     SalesReview[]
+  messages    SalesMessage[]
+  postId      String?   @unique @map("post_id")
+  post        Post?     @relation("SalesPost", fields: [postId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([type, category])
+  @@index([status, createdAt])
+  @@index([price])
+  @@index([location])
+  @@map("SalesListing")
+}
+
+// ============================================
+// SalesListingImage - Imagens do anúncio
+// ============================================
+model SalesListingImage {
+  id          String    @id @default(cuid())
+  listingId   String    @map("listing_id")
+  url         String
+  thumbnailUrl String?  @map("thumbnail_url")
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  listing     SalesListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, order])
+  @@map("SalesListingImage")
+}
+
+// ============================================
+// SalesRealEstate - Imóveis
+// ============================================
+model SalesRealEstate {
+  id          String    @id @default(cuid())
+  listingId   String    @unique @map("listing_id")
+  
+  dealType    SalesRealEstateDealType
+  propertyType SalesRealEstatePropertyType @map("property_type")
+  areaM2      Float     @map("area_m2")
+  bedrooms    Int
+  bathrooms   Int
+  parkingSpots Int      @map("parking_spots")
+  
+  // Endereço específico
+  neighborhood String
+  street      String
+  condoPrice  Float?    @map("condo_price")
+  
+  // Features
+  hasFinancing Boolean  @default(false) @map("has_financing")
+  hasGarage   Boolean   @default(false) @map("has_garage")
+  gatedCommunity Boolean @default(false) @map("gated_community")
+  
+  listing     SalesListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("SalesRealEstate")
+}
+
+// ============================================
+// SalesVehicle - Veículos
+// ============================================
+model SalesVehicle {
+  id          String    @id @default(cuid())
+  listingId   String    @unique @map("listing_id")
+  
+  fuel        SalesVehicleFuelType
+  year        Int
+  mileageKm   Float     @map("mileage_km")
+  
+  // Opcionais
+  brand       String?
+  model       String?
+  transmission String?  @map("transmission") // manual, automatic
+  color       String?
+  doors       Int?
+  
+  listing     SalesListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("SalesVehicle")
+}
+
+// ============================================
+// SalesElectronics - Eletrônicos
+// ============================================
+model SalesElectronics {
+  id          String    @id @default(cuid())
+  listingId   String    @unique @map("listing_id")
+  
+  brand       String
+  storageGb   Int?      @map("storage_gb")
+  
+  // Opcionais específicos
+  screenSize  String?   @map("screen_size")
+  processor   String?
+  ramGb       Int?      @map("ram_gb")
+  batteryCapacity String? @map("battery_capacity")
+  
+  listing     SalesListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("SalesElectronics")
+}
+
+// ============================================
+// SalesFashion - Moda
+// ============================================
+model SalesFashion {
+  id          String    @id @default(cuid())
+  listingId   String    @unique @map("listing_id")
+  
+  size        String
+  gender      String    // male, female, unisex
+  
+  // Opcionais
+  color       String?
+  material    String?
+  brand       String?
+  
+  listing     SalesListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("SalesFashion")
+}
+
+// ============================================
+// SalesHome - Casa/Decoração
+// ============================================
+model SalesHome {
+  id          String    @id @default(cuid())
+  listingId   String    @unique @map("listing_id")
+  
+  room        SalesHomeRoomType
+  material    SalesHomeMaterialType
+  
+  // Opcionais
+  dimensions  String?
+  weight      String?
+  color       String?
+  
+  listing     SalesListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("SalesHome")
+}
+
+// ============================================
+// SalesSports - Esportes
+// ============================================
+model SalesSports {
+  id          String    @id @default(cuid())
+  listingId   String    @unique @map("listing_id")
+  
+  sport       SalesSportType
+  
+  // Opcionais
+  size        String?
+  brand       String?
+  
+  listing     SalesListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("SalesSports")
+}
+
+// ============================================
+// SalesFavorite - Favoritos do usuário
+// ============================================
+model SalesFavorite {
+  id          String    @id @default(cuid())
+  listingId   String    @map("listing_id")
+  userId      String    @map("user_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  listing     SalesListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, userId])
+  @@map("SalesFavorite")
+}
+
+// ============================================
+// SalesReview - Avaliações do vendedor/produto
+// ============================================
+model SalesReview {
+  id          String    @id @default(cuid())
+  listingId   String    @map("listing_id")
+  userId      String    @map("user_id") // Quem avaliou
+  
+  rating      Int       // 1-5 estrelas
+  comment     String?   @db.Text
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  listing     SalesListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, userId])
+  @@map("SalesReview")
+}
+
+// ============================================
+// SalesMessage - Mensagens entre comprador/vendedor
+// ============================================
+model SalesMessage {
+  id          String    @id @default(cuid())
+  listingId   String    @map("listing_id")
+  senderId    String    @map("sender_id")
+  receiverId  String    @map("receiver_id")
+  
+  content     String    @db.Text
+  isRead      Boolean   @default(false) @map("is_read")
+  readAt      DateTime? @map("read_at")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  listing     SalesListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  sender      User      @relation("SentSalesMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    User      @relation("ReceivedSalesMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, createdAt])
+  @@index([receiverId, isRead])
+  @@map("SalesMessage")
+}
+
+// ============================================
+// DATING MODULE - Encontros/Relacionamentos
+// ============================================
+
+enum DatingLikeType {
+  LIKE
+  SUPER_LIKE
+  PASS
+}
+
+enum DatingMatchStatus {
+  PENDING
+  MATCHED
+  UNMATCHED
+  BLOCKED
+}
+
+enum DatingGenderInterest {
+  MALE
+  FEMALE
+  BOTH
+}
+
+enum DatingMessageType {
+  TEXT
+  IMAGE
+  VOICE
+  LOCATION
+}
+
+// ============================================
+// DatingProfile - Perfil de Dating do Usuário
+// ============================================
+model DatingProfile {
+  id          String    @id @default(cuid())
+  userId      String    @unique @map("user_id")
+  
+  // Dados básicos
+  bio         String?
+  occupation  String?
+  age         Int?
+  
+  // Localização
+  city        String?
+  state       String?
+  latitude    Float?
+  longitude   Float?
+  
+  // Configurações
+  isActive    Boolean   @default(true) @map("is_active")
+  isVerified  Boolean   @default(false) @map("is_verified")
+  showOnlineStatus Boolean @default(true) @map("show_online_status")
+  showDistance Boolean @default(true) @map("show_distance")
+  
+  // Preferências
+  minAge      Int       @default(18) @map("min_age")
+  maxAge      Int       @default(50) @map("max_age")
+  maxDistanceKm Int     @default(50) @map("max_distance_km")
+  genderInterest DatingGenderInterest @default(BOTH) @map("gender_interest")
+  onlyVerified Boolean  @default(false) @map("only_verified")
+  
+  // Contadores
+  likesSent   Int       @default(0) @map("likes_sent")
+  likesReceived Int     @default(0) @map("likes_received")
+  matchesCount Int      @default(0) @map("matches_count")
+  superLikesCount Int   @default(0) @map("super_likes_count")
+  
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  lastActiveAt DateTime? @map("last_active_at")
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photos      DatingPhoto[]
+  interests   DatingInterest[]
+  likesSentBy DatingLike[] @relation("SentLikes")
+  likesReceivedBy DatingLike[] @relation("ReceivedLikes")
+  matchesAsUser1 DatingMatch[] @relation("MatchUser1")
+  matchesAsUser2 DatingMatch[] @relation("MatchUser2")
+  blockedUsers DatingBlock[] @relation("Blocker")
+  blockedByUsers DatingBlock[] @relation("Blocked")
+  stories DatingStory[]
+
+  @@index([isActive])
+  @@index([age])
+  @@index([city])
+  @@map("DatingProfile")
+}
+
+// ============================================
+// DatingPhoto - Fotos do Perfil
+// ============================================
+model DatingPhoto {
+  id          String    @id @default(cuid())
+  profileId   String    @map("profile_id")
+  url         String
+  order       Int       @default(0)
+  isMain      Boolean   @default(false) @map("is_main")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  profile     DatingProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, order])
+  @@map("DatingPhoto")
+}
+
+// ============================================
+// DatingInterest - Interesses do Usuário
+// ============================================
+model DatingInterest {
+  id          String    @id @default(cuid())
+  profileId   String    @map("profile_id")
+  name        String
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  profile     DatingProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, name])
+  @@map("DatingInterest")
+}
+
+// ============================================
+// DatingLike - Likes/Passes
+// ============================================
+model DatingLike {
+  id          String    @id @default(cuid())
+  fromId      String    @map("from_id")
+  toId        String    @map("to_id")
+  type        DatingLikeType @default(LIKE)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  fromProfile DatingProfile @relation("SentLikes", fields: [fromId], references: [id], onDelete: Cascade)
+  toProfile   DatingProfile @relation("ReceivedLikes", fields: [toId], references: [id], onDelete: Cascade)
+  
+  // Relations to User (for opposite relations)
+  userSent    User?         @relation("SentLikes", fields: [userSentId], references: [id])
+  userSentId  String?
+  userReceived User?        @relation("ReceivedLikes", fields: [userReceivedId], references: [id])
+  userReceivedId String?
+
+  @@unique([fromId, toId])
+  @@index([toId, type, createdAt])
+  @@map("DatingLike")
+}
+
+// ============================================
+// DatingMatch - Matches (quando dois users dão like)
+// ============================================
+model DatingMatch {
+  id          String    @id @default(cuid())
+  user1Id     String    @map("user1_id")
+  user2Id     String    @map("user2_id")
+  
+  status      DatingMatchStatus @default(MATCHED)
+  
+  // Contadores
+  messagesCount Int     @default(0) @map("messages_count")
+  unreadCountUser1 Int @default(0) @map("unread_count_user1")
+  unreadCountUser2 Int @default(0) @map("unread_count_user2")
+  
+  // Última mensagem
+  lastMessage String?   @map("last_message") @db.Text
+  lastMessageAt DateTime? @map("last_message_at")
+  lastMessageBy String?   @map("last_message_by")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  unmatchedAt DateTime? @map("unmatched_at")
+  
+  user1       DatingProfile @relation("MatchUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2       DatingProfile @relation("MatchUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  messages    DatingMessage[]
+
+  // Relations to User (for opposite relations)
+  user1Ref    User?           @relation("MatchUser1", fields: [user1RefId], references: [id])
+  user1RefId  String?
+  user2Ref    User?           @relation("MatchUser2", fields: [user2RefId], references: [id])
+  user2RefId  String?
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id, status, lastMessageAt])
+  @@index([user2Id, status, lastMessageAt])
+  @@map("DatingMatch")
+}
+
+// ============================================
+// DatingMessage - Mensagens no Chat
+// ============================================
+model DatingMessage {
+  id          String    @id @default(cuid())
+  matchId     String    @map("match_id")
+  senderId    String    @map("sender_id")
+  
+  type        DatingMessageType @default(TEXT)
+  content     String
+  mediaUrl    String?   @map("media_url")
+  
+  isRead      Boolean   @default(false) @map("is_read")
+  readAt      DateTime? @map("read_at")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  match       DatingMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@index([matchId, createdAt])
+  @@map("DatingMessage")
+}
+
+// ============================================
+// DatingBlock - Bloqueios
+// ============================================
+model DatingBlock {
+  id          String    @id @default(cuid())
+  blockerId   String    @map("blocker_id")
+  blockedId   String    @map("blocked_id")
+  
+  reason      String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  blocker     DatingProfile @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked     DatingProfile @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  // Relations to User (for opposite relations)
+  blockerUser User?         @relation("Blocker", fields: [blockerUserId], references: [id])
+  blockerUserId String?
+  blockedUser User?         @relation("Blocked", fields: [blockedUserId], references: [id])
+  blockedUserId String?
+
+  @@unique([blockerId, blockedId])
+  @@map("DatingBlock")
+}
+
+// ============================================
+// DatingStory - Stories do Dating
+// ============================================
+model DatingStory {
+  id          String    @id @default(cuid())
+  profileId   String    @map("profile_id")
+  
+  mediaUrl    String    @map("media_url")
+  mediaType   String    @default("image") @map("media_type") // image, video
+  caption     String?
+  
+  // Contadores
+  viewsCount  Int       @default(0) @map("views_count")
+  
+  expiresAt   DateTime  @map("expires_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  profile     DatingProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  views       DatingStoryView[]
+
+  @@index([profileId, createdAt])
+  @@map("DatingStory")
+}
+
+// ============================================
+// DatingStoryView - Views nos Stories
+// ============================================
+model DatingStoryView {
+  id          String    @id @default(cuid())
+  storyId     String    @map("story_id")
+  viewerId    String    @map("viewer_id")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  story       DatingStory @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, viewerId])
+  @@map("DatingStoryView")
+}
+
+// ============================================
+// MESSENGER MODULE - Sistema de Mensagens (MSN style)
+// ============================================
+
+enum MessengerStatus {
+  ONLINE
+  AWAY
+  BUSY
+  OFFLINE
+  APPEAR_OFFLINE
+}
+
+enum MessengerMessageType {
+  TEXT
+  IMAGE
+  FILE
+  NUDGE
+  WINK
+  CALL_STARTED
+  CALL_ENDED
+  CALL_MISSED
+  SYSTEM
+}
+
+enum MessengerCallState {
+  IDLE
+  CALLING
+  RINGING
+  IN_CALL
+  ENDED
+}
+
+enum MessengerCallEndReason {
+  HANGUP
+  NETWORK
+  BUSY
+  REJECTED
+  OFFLINE
+  TIMEOUT
+}
+
+// ============================================
+// MessengerConversation - Conversas entre usuários
+// ============================================
+model MessengerConversation {
+  id          String    @id @default(cuid())
+  
+  // Participantes
+  user1Id     String    @map("user1_id")
+  user2Id     String    @map("user2_id")
+  
+  // Configurações
+  isBlocked   Boolean   @default(false) @map("is_blocked")
+  blockedBy   String?   @map("blocked_by") // userId que bloqueou
+  
+  // Contadores
+  messagesCount Int     @default(0) @map("messages_count")
+  unreadCountUser1 Int @default(0) @map("unread_count_user1")
+  unreadCountUser2 Int @default(0) @map("unread_count_user2")
+  
+  // Última mensagem (denormalizado)
+  lastMessage String?   @map("last_message") @db.Text
+  lastMessageAt DateTime? @map("last_message_at")
+  lastMessageBy String?   @map("last_message_by")
+  lastMessageType MessengerMessageType? @map("last_message_type")
+  
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user1       User      @relation("MessengerUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2       User      @relation("MessengerUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  messages    MessengerMessage[]
+  calls       MessengerCall[]
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id, updatedAt])
+  @@index([user2Id, updatedAt])
+  @@map("MessengerConversation")
+}
+
+// ============================================
+// MessengerMessage - Mensagens
+// ============================================
+model MessengerMessage {
+  id          String    @id @default(cuid())
+  conversationId String @map("conversation_id")
+  senderId    String    @map("sender_id")
+  
+  type        MessengerMessageType @default(TEXT)
+  content     String    // texto ou JSON para tipos especiais
+  
+  // Mídia
+  mediaUrl    String?   @map("media_url")
+  fileName    String?   @map("file_name")
+  fileSize    Int?      @map("file_size") // bytes
+  
+  // Status
+  isRead      Boolean   @default(false) @map("is_read")
+  readAt      DateTime? @map("read_at")
+  isEdited    Boolean   @default(false) @map("is_edited")
+  editedAt    DateTime? @map("edited_at")
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+  
+  // Resposta
+  replyToId   String?   @map("reply_to_id")
+  replyToContent String? @map("reply_to_content")
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  conversation MessengerConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
+  @@map("MessengerMessage")
+}
+
+// ============================================
+// MessengerCall - Chamadas de vídeo/voz
+// ============================================
+model MessengerCall {
+  id          String    @id @default(cuid())
+  conversationId String @map("conversation_id")
+  
+  // Participantes
+  callerId    String    @map("caller_id")
+  receiverId  String    @map("receiver_id")
+  
+  // Estado
+  state       MessengerCallState @default(IDLE)
+  media       String    @default("video") // video, voice
+  
+  // Início e fim
+  startedAt   DateTime? @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+  duration    Int?      // segundos
+  
+  // Motivo do fim
+  endReason   MessengerCallEndReason? @map("end_reason")
+  endedBy     String?   @map("ended_by") // userId que encerrou
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  conversation MessengerConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([callerId, state])
+  @@index([receiverId, state])
+  @@map("MessengerCall")
+}
+
+// ============================================
+// MessengerUserStatus - Status do usuário (online, away, busy)
+// ============================================
+model MessengerUserStatus {
+  id          String    @id @default(cuid())
+  userId      String    @unique @map("user_id")
+  
+  status      MessengerStatus @default(ONLINE)
+  statusPhrase String?   @map("status_phrase") // "No trabalho", "Na aula", etc
+  personalMessage String? @map("personal_message") // "Ocupado até tarde"
+  
+  // Música/status do que está fazendo
+  nowPlaying  String?   @map("now_playing") // "Listening to: Artist - Song"
+  
+  // Último status
+  lastSeenAt  DateTime? @map("last_seen_at")
+  
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("MessengerUserStatus")
+}
+
+// ============================================
+// MessengerTyping - Status de "digitando..."
+// ============================================
+model MessengerTyping {
+  id          String    @id @default(cuid())
+  conversationId String @map("conversation_id")
+  userId      String    @map("user_id")
+  
+  isTyping    Boolean   @default(true) @map("is_typing")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  
+  @@unique([conversationId, userId])
+  @@map("MessengerTyping")
+}
+
+// ============================================
+// GALLERY MODULE - Fotos e Álbuns
+// ============================================
+
+enum GalleryPrivacy {
+  PUBLIC
+  PRIVATE
+  FRIENDS
+}
+
+// ============================================
+// GalleryAlbum - Álbuns de Fotos
+// ============================================
+model GalleryAlbum {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  
+  // Dados do álbum
+  name        String
+  description String?
+  coverUrl    String?   @map("cover_url")
+  
+  // Privacidade
+  privacy     GalleryPrivacy @default(PUBLIC)
+  
+  // Contadores
+  photosCount Int       @default(0) @map("photos_count")
+  viewsCount  Int       @default(0) @map("views_count")
+  
+  // Ordenação
+  order       Int       @default(0)
+  
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photos      GalleryPhoto[]
+
+  @@index([userId, privacy])
+  @@index([userId, order])
+  @@map("GalleryAlbum")
+}
+
+// ============================================
+// GalleryPhoto - Fotos individuais
+// ============================================
+model GalleryPhoto {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  albumId     String?   @map("album_id")
+  
+  // Dados da foto
+  url         String
+  thumbnailUrl String?  @map("thumbnail_url")
+  caption     String?   // legenda/descrição
+  
+  // Localização
+  location    String?
+  latitude    Float?
+  longitude   Float?
+  
+  // Filtros/editores aplicados
+  filter      String?   // nome do filtro
+  effects     Json?     // efeitos aplicados
+
+  // Contadores removidos - usando sistema de interações global (InteractionsService)
+  // likesCount, commentsCount obtidos via Reaction/Comment com entityType: 'galleryPhoto'
+
+  // Flags
+  isFavorite  Boolean   @default(false) @map("is_favorite")
+  isFeatured  Boolean   @default(false) @map("is_featured")
+  
+  // Privacidade (pode sobrescrever o do álbum)
+  privacy     GalleryPrivacy? @map("privacy")
+  
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  album       GalleryAlbum? @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  tags        GalleryPhotoTag[]
+
+  // Interligação com Post (relação inversa - sem fields/references)
+  postId      String?   @unique @map("post_id")
+  post        Post?     @relation("GalleryPhotoToPost")
+
+  @@index([userId, albumId])
+  @@index([userId, isFavorite])
+  @@index([userId, isFeatured])
+  @@index([createdAt])
+  @@map("GalleryPhoto")
+}
+
+// ============================================
+// GalleryPhotoTag - Tags de pessoas nas fotos
+// ============================================
+model GalleryPhotoTag {
+  id          String    @id @default(cuid())
+  photoId     String    @map("photo_id")
+  userId      String    @map("user_id") // usuário tagueado
+  
+  // Posição na foto
+  posX        Float     @map("pos_x") // 0-100%
+  posY        Float     @map("pos_y") // 0-100%
+  width       Float?    // área da tag
+  height      Float?    // área da tag
+  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  photo       GalleryPhoto @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([photoId, userId])
+  @@map("GalleryPhotoTag")
+}
+
+// ============================================
+// GalleryPhotoLike e GalleryPhotoComment removidos
+// Sistema de interações unificado usando InteractionsService
+// com entityType: 'galleryPhoto' nas tabelas Reaction e Comment
+// ============================================
