@@ -1,4 +1,0 @@
-feat: jogo de damas completo
-- Frontend (Next.js + Three.js): tabuleiro, menu, autenticação base, cliente Supabase
-- Backend (NestJS + Prisma + Supabase): auth, core, providers
-- Configuração de banco e estrutura modular
