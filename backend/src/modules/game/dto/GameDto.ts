@@ -27,3 +27,26 @@ export interface ChooseColorDto {
   color: PlayerColor;
 }
 
+// ============================================
+// DTOs do Game Loop (REST)
+// ============================================
+export interface StartGameDto {
+  playerWhiteId: string;
+  playerBlackId: string;
+  type?: 'BOT' | 'PVP';
+}
+
+export interface MoveDto {
+  gameId: string;
+  playerId: string;
+  from: { row: number; col: number };
+  to: { row: number; col: number };
+}
+
+export interface ValidMovesDto {
+  gameId: string;
+  row: number;
+  col: number;
+}
+
+

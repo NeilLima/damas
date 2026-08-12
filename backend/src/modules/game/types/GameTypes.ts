@@ -44,3 +44,29 @@ export interface GameRoom {
   winner: PlayerColor | null;
   lastMove: LastMove | null;
 }
+
+// ============================================
+// Game Loop (REST) - partida persistida na camada repository
+// ============================================
+export type GameType = 'BOT' | 'PVP';
+
+export interface OngoingGame {
+  id: string;
+  type: GameType;
+  playerWhite: string;
+  playerBlack: string;
+  board: BoardCell[][];
+  turn: PlayerColor;
+  status: 'active' | 'over';
+  winner: PlayerColor | null;
+  createdAt: string;
+}
+
+export interface GameStatePayload {
+  gameId: string;
+  board: BoardCell[][];
+  turn: PlayerColor;
+  status: 'active' | 'over';
+  winner: PlayerColor | null;
+}
+

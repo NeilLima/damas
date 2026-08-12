@@ -263,6 +263,26 @@ export class GameRoomService {
     return true;
   }
 
+  /** Wrapper público: cor de uma peça (usado pela camada REST). */
+  public getPieceColorOf(value: CellValue): PlayerColor | null {
+    return this.getPieceColor(value);
+  }
+
+  /** Wrapper público: movimentos válidos para uma peça numa posição (REST reutiliza). */
+  public getValidMovesFor(cells: BoardCell[][], position: BoardPosition, color: PlayerColor): BoardPosition[] {
+    return this.getValidMoves(cells, position, color);
+  }
+
+  /** Wrapper público: checa se a cor perdeu (sem peças ou sem movimentos). */
+  public playerHasLost(cells: BoardCell[][], color: PlayerColor): boolean {
+    return this.hasLost(cells, color);
+  }
+
+  /** Wrapper público: aplica um movimento num tabuleiro arbitrário, sem tocar salas. */
+  public applyMove(cells: BoardCell[][], from: BoardPosition, to: BoardPosition): BoardCell[][] {
+    return this.movePiece(cells, from, to);
+  }
+
   public reset(roomId: string): GameRoom | undefined {
     const room = this.rooms.get(roomId);
     if (!room) return undefined;
