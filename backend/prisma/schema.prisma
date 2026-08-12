@@ -115,10 +115,90 @@ model User {
   comments              Comment[]
   reactions             Reaction[]
 
+  // Jogo de Damas (Multiplayer)
+  playerGameStats   PlayerGameStats?
+  gamesAsPlayer1    Game[]  @relation("GamePlayer1")
+  gamesAsPlayer2    Game[]  @relation("GamePlayer2")
+  wonGames          Game[]  @relation("GameWinner")
+  movesMade         Move[]
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   @@map("User")
+}
+
+// ============================================
+// Jogo de Damas - Partida (Game)
+// ============================================
+enum GameType {
+  BOT
+  PVP
+}
+
+enum GameStatus {
+  ACTIVE
+  FINISHED
+  CANCELED
+}
+
+model Game {
+  id             String     @id @default(cuid())
+  player1Id      String
+  player2Id      String?
+  player1        User       @relation("GamePlayer1", fields: [player1Id], references: [id], onDelete: Cascade)
+  player2        User?      @relation("GamePlayer2", fields: [player2Id], references: [id], onDelete: SetNull)
+  type           GameType   @default(PVP)
+  status         GameStatus @default(ACTIVE)
+  winnerId       String?
+  winner         User?      @relation("GameWinner", fields: [winnerId], references: [id], onDelete: SetNull)
+  boardStateJson Json?
+  moves          Move[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([player1Id])
+  @@index([player2Id])
+  @@map("Game")
+}
+
+// ============================================
+// Jogo de Damas - Movimento (Move)
+// ============================================
+model Move {
+  id              String   @id @default(cuid())
+  gameId          String
+  playerId        String
+  game            Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player          User     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  fromRow         Int
+  fromCol         Int
+  toRow           Int
+  toCol           Int
+  capturedPiece   String?
+  isKingPromotion Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([gameId])
+  @@index([playerId])
+  @@map("Move")
+}
+
+// ============================================
+// Jogo de Damas - Estatísticas do jogador (PlayerGameStats)
+// ============================================
+model PlayerGameStats {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wins      Int      @default(0)
+  losses    Int      @default(0)
+  draws     Int      @default(0)
+  rating    Int      @default(1200)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("PlayerGameStats")
 }
 
 // ============================================
