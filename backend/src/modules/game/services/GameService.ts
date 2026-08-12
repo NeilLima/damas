@@ -10,6 +10,7 @@ import { MoveDto, StartGameDto, ValidMovesDto } from '../dto/GameDto';
 import {
   BoardPosition,
   GameStatePayload,
+  HistoryItem,
   OngoingGame,
   PlayerColor,
 } from '../types/GameTypes';
@@ -103,6 +104,27 @@ export class GameService {
       throw new NotFoundException('Partida não encontrada');
     }
     return game;
+  }
+
+  /** Lista o histórico de partidas de um jogador (em memória). */
+  public listHistory(playerId: string): HistoryItem[] {
+    return this.repository.listByPlayer(playerId).map((game) => {
+      const myColor = this.getPlayerColor(game, playerId);
+      const opponentId = game.playerWhite === playerId ? game.playerBlack : game.playerWhite;
+      let result: HistoryItem['result'] = 'ongoing';
+      if (game.status === 'over') {
+        if (game.winner === null) result = 'draw';
+        else result = game.winner === myColor ? 'win' : 'loss';
+      }
+      return {
+        id: game.id,
+        type: game.type,
+        opponentId: opponentId ?? null,
+        result,
+        status: game.status,
+        createdAt: game.createdAt,
+      };
+    });
   }
 
   private getPlayerColor(game: OngoingGame, playerId: string): PlayerColor {

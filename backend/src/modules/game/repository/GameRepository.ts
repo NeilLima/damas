@@ -31,4 +31,14 @@ export class GameRepository {
   public remove(id: string): boolean {
     return this.games.delete(id);
   }
+
+  public listByPlayer(playerId: string): OngoingGame[] {
+    const result: OngoingGame[] = [];
+    for (const game of this.games.values()) {
+      if (game.playerWhite === playerId || game.playerBlack === playerId) {
+        result.push(game);
+      }
+    }
+    return result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
 }

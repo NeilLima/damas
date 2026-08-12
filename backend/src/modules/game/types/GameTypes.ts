@@ -70,3 +70,14 @@ export interface GameStatePayload {
   winner: PlayerColor | null;
 }
 
+export type GameResult = 'win' | 'loss' | 'draw' | 'ongoing';
+
+export interface HistoryItem {
+  id: string;
+  type: GameType;
+  opponentId: string | null;
+  result: GameResult;
+  status: 'active' | 'over';
+  createdAt: string;
+}
+

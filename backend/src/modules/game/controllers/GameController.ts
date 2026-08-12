@@ -6,7 +6,7 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { GameService } from '../services/GameService';
 import { MoveDto, StartGameDto, ValidMovesDto } from '../dto/GameDto';
-import { BoardPosition, GameStatePayload, OngoingGame } from '../types/GameTypes';
+import { BoardPosition, GameStatePayload, HistoryItem, OngoingGame } from '../types/GameTypes';
 
 @Controller('game')
 export class GameController {
@@ -33,5 +33,10 @@ export class GameController {
       row: parseInt(row, 10),
       col: parseInt(col, 10),
     } as ValidMovesDto);
+  }
+
+  @Get('history')
+  public getHistory(@Query('playerId') playerId: string): HistoryItem[] {
+    return this.gameService.listHistory(playerId);
   }
 }
