@@ -1,0 +1,7 @@
+# Arquivos temporários de debug/verificação
+git-tmp-out.txt
+backend/gcv.txt
+backend/tsconfig.gamecheck.json
+
+# Vercel
+.vercel
