@@ -6,6 +6,7 @@ import {
   StyledTitle,
   StyledButtonGroup,
   StyledMenuButton,
+  StyledLogoutButton,
 } from '../styles/MenuStyles';
 import type { MenuButton } from '../types/MenuTypes';
 
@@ -27,6 +28,9 @@ export default function MenuComp() {
           </StyledMenuButton>
         ))}
       </StyledButtonGroup>
+      {state.isAuthenticated && (
+        <StyledLogoutButton onClick={actions.handleLogout}>Sair</StyledLogoutButton>
+      )}
     </StyledContainer>
   );
 }

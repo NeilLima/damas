@@ -7,8 +7,10 @@ export interface MenuButton {
 export interface MenuState {
   buttons: MenuButton[];
   isLoading: boolean;
+  isAuthenticated: boolean;
 }
 
 export interface MenuActions {
   handleNavigate: (route: string) => void;
+  handleLogout: () => void;
 }

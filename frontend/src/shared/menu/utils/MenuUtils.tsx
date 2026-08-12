@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { menuRoutes } from '../routes/MenuRoutes';
+import { clearSession, getStoredUserId } from '@/shared/auth/services/AuthServices';
 import type { MenuButton, MenuState, MenuActions } from '../types/MenuTypes';
 
 // ============================================
@@ -20,22 +21,31 @@ const MENU_BUTTONS: MenuButton[] = [
 export function useMenu(): { state: MenuState; actions: MenuActions } {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!getStoredUserId());
 
   const handleNavigate = useCallback(
     (route: string) => {
       setIsLoading(true);
       router.push(route);
     },
-    [router]
+    [router],
   );
+
+  const handleLogout = useCallback(() => {
+    clearSession();
+    setIsAuthenticated(false);
+    router.push('/');
+  }, [router]);
 
   const state: MenuState = {
     buttons: MENU_BUTTONS,
     isLoading,
+    isAuthenticated,
   };
 
   const actions: MenuActions = {
     handleNavigate,
+    handleLogout,
   };
 
   return { state, actions };

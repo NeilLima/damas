@@ -69,3 +69,27 @@ export const StyledMenuButton = styled.button`
     font-size: 1.25rem;
   }
 `;
+
+export const StyledLogoutButton = styled.button`
+  width: 100%;
+  max-width: 320px;
+  padding: 14px 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(229, 57, 53, 0.15);
+  color: #ff8a80;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+
+  &:hover {
+    background: rgba(229, 57, 53, 0.28);
+    transform: translateY(-2px);
+  }
+
+  @media (min-width: 768px) {
+    max-width: 400px;
+  }
+`;
