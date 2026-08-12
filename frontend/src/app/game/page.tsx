@@ -1,7 +1,5 @@
-'use client';
-
-import Board3DComp from '@/shared/board/components/Board3DComp';
+import GameBoardComp from '@/shared/game/components/GameBoardComp';
 
 export default function GamePage() {
-  return <Board3DComp />;
+  return <GameBoardComp />;
 }

@@ -1,6 +1,6 @@
 ---
 id: "banco-de-dados-prisma"
-status: "backlog"
+status: "backlog."
 priority: "high"
 assignee: "victor"
 epic: "multiplayer"

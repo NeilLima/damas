@@ -56,42 +56,73 @@ export function useBoardService() {
       const { row, col } = position;
       const piece = cells[row][col].value;
       const isKingPiece = isKing(piece);
-      
-      // Direções: peças normais só vão para frente, rei vai para ambos
-      const directions = pieceColor === 'white'
-        ? (isKingPiece ? [-1, 1] : [-1])
-        : (isKingPiece ? [-1, 1] : [1]);
 
-      for (const dRow of directions) {
-        for (const dCol of [-1, 1]) {
-          const newRow = row + dRow;
-          const newCol = col + dCol;
+      // Direção de avanço das peças normais: branco sobe (row -1), preto desce (row +1)
+      const forwardDirs = pieceColor === 'white' ? [-1] : [1];
+      const allRowDirs = [-1, 1];
 
-          if (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8) {
-            const targetCell = cells[newRow][newCol];
+      // Toda captura (frente ou trás) é permitida para peças normais e damas.
+      // A dama também desliza e captura em todas as diagonais.
+      if (isKingPiece) {
+        // DAMA: desliza em todas as diagonais, capturando peça no caminho
+        for (const dRow of allRowDirs) {
+          for (const dCol of [-1, 1]) {
+            let r = row + dRow;
+            let c = col + dCol;
+            let crossedEnemy = false;
 
-            // Movimento simples para casa vazia
-            if (targetCell.value === null && targetCell.isPlayable) {
-              moves.push({ row: newRow, col: newCol });
-            }
-
-            // Captura - pular sobre peça adversária
-            if (targetCell.value !== null) {
+            while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+              const targetCell = cells[r][c];
+              if (!targetCell.isPlayable) break;
               const targetColor = getPieceColor(targetCell.value);
-              if (targetColor !== pieceColor) {
-                const jumpRow = row + dRow * 2;
-                const jumpCol = col + dCol * 2;
 
-                if (
-                  jumpRow >= 0 && jumpRow < 8 &&
-                  jumpCol >= 0 && jumpCol < 8
-                ) {
-                  const jumpCell = cells[jumpRow][jumpCol];
-                  if (jumpCell.isPlayable && jumpCell.value === null) {
-                    moves.push({ row: jumpRow, col: jumpCol });
-                  }
+              if (targetColor === null) {
+                moves.push({ row: r, col: c });
+                if (crossedEnemy) break; // dama aterrissa logo após a peça capturada
+              } else if (targetColor === pieceColor) {
+                break; // peça própria bloqueia
+              } else {
+                if (crossedEnemy) break; // não pula duas peças seguidas
+                crossedEnemy = true;
+              }
+
+              r += dRow;
+              c += dCol;
+            }
+          }
+        }
+      } else {
+        // PEÇA NORMAL
+        // (a) Capturas: permitidas em TODAS as diagonais (frente e trás)
+        for (const dRow of allRowDirs) {
+          for (const dCol of [-1, 1]) {
+            const mr = row + dRow;
+            const mc = col + dCol;
+            if (mr < 0 || mr >= 8 || mc < 0 || mc >= 8) continue;
+
+            const mid = cells[mr][mc];
+            const midColor = getPieceColor(mid.value);
+            if (midColor && midColor !== pieceColor) {
+              const lr = row + dRow * 2;
+              const lc = col + dCol * 2;
+              if (lr >= 0 && lr < 8 && lc >= 0 && lc < 8) {
+                const land = cells[lr][lc];
+                if (land.value === null && land.isPlayable) {
+                  moves.push({ row: lr, col: lc });
                 }
               }
+            }
+          }
+        }
+
+        // (b) Movimento simples: somente 1 casa PARA FRENTE
+        for (const dCol of [-1, 1]) {
+          const fr = row + forwardDirs[0];
+          const fc = col + dCol;
+          if (fr >= 0 && fr < 8 && fc >= 0 && fc < 8) {
+            const target = cells[fr][fc];
+            if (target.value === null && target.isPlayable) {
+              moves.push({ row: fr, col: fc });
             }
           }
         }
@@ -109,19 +140,19 @@ export function useBoardService() {
   ): BoardCell[][] => {
     const newCells = cloneBoard(cells);
     const piece = newCells[from.row][from.col].value;
-    
-    // Remove peça capturada (se for captura)
-    const rowDiff = to.row - from.row;
-    const colDiff = to.col - from.col;
-    
-    // Se moveu 2 casas em qualquer direção, é captura
-    if (Math.abs(rowDiff) === 2 && Math.abs(colDiff) === 2) {
-      const capturedRow = from.row + rowDiff / 2;
-      const capturedCol = from.col + colDiff / 2;
-      newCells[capturedRow][capturedCol] = {
-        ...newCells[capturedRow][capturedCol],
-        value: null,
-      };
+
+    // Remove peça(s) capturada(s) no caminho (dama desliza várias casas)
+    const rowDir = Math.sign(to.row - from.row);
+    const colDir = Math.sign(to.col - from.col);
+    let r = from.row + rowDir;
+    let c = from.col + colDir;
+    while (r !== to.row || c !== to.col) {
+      const mid = newCells[r][c];
+      if (mid.value !== null) {
+        newCells[r][c] = { ...mid, value: null };
+      }
+      r += rowDir;
+      c += colDir;
     }
 
     // Promoveção para dama
@@ -146,8 +177,19 @@ export function useBoardService() {
     from: BoardPosition,
     to: BoardPosition,
   ): boolean => {
-    const rowDiff = Math.abs(to.row - from.row);
-    return rowDiff === 2;
+    const fromColor = getPieceColor(cells[from.row][from.col].value);
+    if (!fromColor) return false;
+    const rowDir = Math.sign(to.row - from.row);
+    const colDir = Math.sign(to.col - from.col);
+    let r = from.row + rowDir;
+    let c = from.col + colDir;
+    while (r !== to.row || c !== to.col) {
+      const midColor = getPieceColor(cells[r][c].value);
+      if (midColor !== null && midColor !== fromColor) return true;
+      r += rowDir;
+      c += colDir;
+    }
+    return false;
   }, []);
 
   return {
