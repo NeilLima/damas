@@ -1,13 +1,13 @@
 ---
 id: "sistema-de-turnos"
-status: "backlog"
+status: "done"
 priority: "high"
 assignee: "victor"
 epic: "gameplay-solo"
 dueDate: null
 created: "2026-08-11T22:05:00.000Z"
-modified: "2026-08-11T22:05:00.000Z"
-completedAt: null
+modified: "2026-08-12T01:08:37.441Z"
+completedAt: "2026-08-12T01:08:37.441Z"
 labels: [frontend]
 order: "a20"
 ---
