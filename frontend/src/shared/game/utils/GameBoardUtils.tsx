@@ -4,7 +4,7 @@
 // ============================================
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import type { BoardPosition } from '../../board/types/BoardTypes';
 import { useBoardService } from '../../board/services/BoardServices';
 import { useGameControl } from './GameControlUtils';
@@ -47,7 +47,8 @@ export function useGameBoardState(): GameBoardReturn {
 
   const [selectedCell, setSelectedCell] = useState<BoardPosition | null>(null);
   const [validMoves, setValidMoves] = useState<BoardPosition[]>([]);
-  const [dragPos, setDragPos] = useState<{ from: BoardPosition; x: number; y: number } | null>(null);
+  // Ref do arrasto: evita re-render durante pointermove (causa "trava").
+  const dragRef = useRef<{ from: BoardPosition; pointerId: number } | null>(null);
 
   // ============================================
   // 3️⃣ OBJETOS
@@ -113,9 +114,9 @@ export function useGameBoardState(): GameBoardReturn {
       if (state.humanColor === state.currentTurn) {
         actions.handlePieceDrag(from, to);
       }
-      setSelectedCell(null);
+            setSelectedCell(null);
       setValidMoves([]);
-      setDragPos(null);
+      dragRef.current = null;
     },
     [state.result, state.isAiThinking, state.humanColor, state.currentTurn, actions],
   );
@@ -139,8 +140,8 @@ export function useGameBoardState(): GameBoardReturn {
       return { row: toRow, col: toCol };
     };
 
-    const clearDrag = () => {
-      setDragPos(null);
+        const clearDrag = () => {
+      dragRef.current = null;
     };
 
     /** Início do arrasto (pointerdown). Funciona para mouse e touch. */
@@ -151,8 +152,9 @@ export function useGameBoardState(): GameBoardReturn {
       const isHumanPiece =
         cell.value && pieceColor === humanColor && currentTurn === humanColor;
       if (!isHumanPiece) return;
-      handleDragStart(position);
-      setDragPos({ from: position, x: e.clientX, y: e.clientY });
+            handleDragStart(position);
+      // Marca o arrasto numa ref (sem re-render) — evita "travar" o gesto no touch.
+      dragRef.current = { from: position, pointerId: e.pointerId };
       // Garante que nenhum gesto nativo role a tela enquanto arrasta.
       try {
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -161,23 +163,20 @@ export function useGameBoardState(): GameBoardReturn {
       }
     };
 
-    /** Movimento durante o arrasto: atualiza seleção/dot seguindo a célula sob o dedo. */
+        // O movimento durante o arrasto NÃO faz setState (evita re-render que trava no touch).
     const handlePointerMove = () => (e: React.PointerEvent) => {
-      if (!dragPos) return;
+      if (!dragRef.current) return;
       e.preventDefault();
-      const pos = getCellAtPoint(e.clientX, e.clientY);
-      if (pos) {
-        setSelectedCell(dragPos.from);
-      }
     };
 
     /** Fim do arrasto: aplica o movimento se soltar numa célula válida (não a origem). */
     const handlePointerUp = () => (e: React.PointerEvent) => {
-      if (!dragPos) return;
+      if (!dragRef.current) return;
       e.preventDefault();
       const pos = getCellAtPoint(e.clientX, e.clientY);
-      if (pos && (pos.row !== dragPos.from.row || pos.col !== dragPos.from.col)) {
-        handleMove(dragPos.from, pos);
+      const from = dragRef.current.from;
+      if (pos && (pos.row !== from.row || pos.col !== from.col)) {
+        handleMove(from, pos);
       }
       clearDrag();
     };
@@ -191,12 +190,11 @@ export function useGameBoardState(): GameBoardReturn {
     };
 
     const handleCellPointerMove = (row: number, col: number) => (e: React.PointerEvent) => {
-      if (dragPos) e.preventDefault();
+      if (dragRef.current) e.preventDefault();
     };
 
     const handleCellTouchMove = (row: number, col: number) => (e: React.TouchEvent) => {
       e.preventDefault();
-      if (dragPos) setSelectedCell(dragPos.from);
     };
 
     for (let row = 0; row < 8; row++) {
@@ -259,7 +257,7 @@ export function useGameBoardState(): GameBoardReturn {
       }
     }
     return result;
-  }, [cells, selectedCell, validMoves, dragPos, handleCellClick, handleDragStart, handleMove, state.result, state.isAiThinking, humanColor, currentTurn, service]);
+  }, [cells, selectedCell, validMoves, handleCellClick, handleDragStart, handleMove, state.result, state.isAiThinking, humanColor, currentTurn, service]);
 
   return {
     cellsData,
