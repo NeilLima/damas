@@ -2,6 +2,8 @@ export interface MenuButton {
   label: string;
   route: string;
   icon?: string;
+  disabled?: boolean;
+  note?: string;
 }
 
 export interface MenuState {

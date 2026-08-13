@@ -21,10 +21,12 @@ export default function MenuComp() {
           <StyledMenuButton
             key={button.route}
             data-testid={`menu-button-${button.label}`}
-            onClick={() => actions.handleNavigate(button.route)}
-            disabled={state.isLoading}
+            onClick={() => !button.disabled && actions.handleNavigate(button.route)}
+            disabled={state.isLoading || button.disabled}
+            $disabled={button.disabled}
           >
-            {button.label}
+            <span>{button.label}</span>
+            {button.note && <span className="menu-note">{button.note}</span>}
           </StyledMenuButton>
         ))}
       </StyledButtonGroup>

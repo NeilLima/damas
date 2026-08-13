@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, useTheme } from '@/context/theme/ThemeContext';
 import GlobalStyles from '@/styles/GlobalStyles';
 import StyledComponentsRegistry from '@/lib/registry';
+import InstallPrompt from '@/shared/install/components/InstallPrompt';
 
 function GlobalStylesWithTheme() {
   const { theme } = useTheme();
@@ -22,7 +23,10 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
     <StyledComponentsRegistry>
       <ThemeProvider>
         <GlobalStylesWithTheme />
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+          <InstallPrompt />
+        </QueryClientProvider>
       </ThemeProvider>
     </StyledComponentsRegistry>
   );

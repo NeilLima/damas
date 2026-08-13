@@ -11,7 +11,12 @@ import type { MenuButton, MenuState, MenuActions } from '../types/MenuTypes';
 // ============================================
 const MENU_BUTTONS: MenuButton[] = [
   { label: 'Jogar vs Computador', route: menuRoutes.game },
-  { label: 'Jogar Online', route: menuRoutes.multiplayer },
+  {
+    label: 'Jogar Online',
+    route: menuRoutes.multiplayer,
+    disabled: true,
+    note: '⏳ Em implementação',
+  },
   { label: 'Histórico', route: menuRoutes.history },
 ];
 

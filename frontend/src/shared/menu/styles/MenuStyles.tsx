@@ -41,27 +41,44 @@ export const StyledButtonGroup = styled.div`
   }
 `;
 
-export const StyledMenuButton = styled.button`
+export const StyledMenuButton = styled.button<{ $disabled?: boolean }>`
   background: ${(props) =>
-    `linear-gradient(${props.theme.gradientDirection}, ${props.theme.primaryColor}, ${props.theme.secondaryColor})`};
+    props.$disabled
+      ? 'rgba(255,255,255,0.08)'
+      : `linear-gradient(${props.theme.gradientDirection}, ${props.theme.primaryColor}, ${props.theme.secondaryColor})`};
   backdrop-filter: blur(10px);
   border-radius: ${(props) => props.theme.borderRadius};
-  box-shadow: ${(props) => props.theme.boxShadow};
-  color: ${(props) => props.theme.textColor};
+  box-shadow: ${(props) => (props.$disabled ? 'none' : props.theme.boxShadow)};
+  color: ${(props) => (props.$disabled ? 'rgba(255,255,255,0.4)' : props.theme.textColor)};
   padding: 20px 24px;
   font-size: 1.1rem;
   font-weight: 600;
   transition: all 0.3s ease;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid ${(props) => (props.$disabled ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.1)')};
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: ${(props) => (props.$disabled ? 'not-allowed' : 'pointer')};
+
+  .menu-note {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.55);
+  }
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: ${(props) => props.theme.boxShadowHover};
+    transform: ${(props) => (props.$disabled ? 'none' : 'translateY(-2px)')};
+    box-shadow: ${(props) => (props.$disabled ? 'none' : props.theme.boxShadowHover)};
   }
 
   &:active {
-    transform: translateY(0);
+    transform: ${(props) => (props.$disabled ? 'none' : 'translateY(0)')};
+  }
+
+  &:disabled {
+    opacity: 1;
   }
 
   @media (min-width: 768px) {
