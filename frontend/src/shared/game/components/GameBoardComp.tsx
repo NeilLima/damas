@@ -64,10 +64,22 @@ function Piece2D({ piece }: { piece: RenderPiece }) {
       $isWhite={piece.isWhite}
       $isSelected={piece.isSelected}
       $isKing={piece.isKing}
-      onClick={piece.onClick}
-      onTouchStart={piece.onTouchStart}
-      onTouchMove={piece.onTouchMove}
-      onTouchEnd={piece.onTouchEnd}
+      onClick={(e) => {
+        e.stopPropagation();
+        piece.onClick();
+      }}
+      onTouchStart={(e) => {
+        e.stopPropagation();
+        piece.onTouchStart(e);
+      }}
+      onTouchMove={(e) => {
+        e.stopPropagation();
+        piece.onTouchMove(e);
+      }}
+      onTouchEnd={(e) => {
+        e.stopPropagation();
+        piece.onTouchEnd(e);
+      }}
       onDragStart={piece.onDragStart}
       onDragEnd={piece.onDragEnd}
       draggable

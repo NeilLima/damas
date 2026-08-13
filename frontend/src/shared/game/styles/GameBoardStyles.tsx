@@ -2,7 +2,7 @@ import styled, { keyframes } from 'styled-components';
 
 export const StyledRoot = styled.div`
   width: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -10,6 +10,7 @@ export const StyledRoot = styled.div`
   padding: 4px;
   background: #1f1f1f;
   box-sizing: border-box;
+  overflow: hidden;
   overscroll-behavior: none;
 `;
 
@@ -46,9 +47,9 @@ export const StyledBoardGrid = styled.div`
   display: grid;
   grid-template-columns: 18px repeat(8, 1fr) 18px;
   grid-template-rows: repeat(8, 1fr);
-  /* Tabuleiro sempre quadrado e ajustado ao menor disponível (largura ou altura) */
-  height: min(calc(100dvh - 210px), 640px);
-  width: min(calc(min(100vw, calc(100dvh - 210px)) - 8px), 640px);
+  /* Largura maior que a altura (tabuleiro mais "largo") - layout desktop */
+  height: calc(100dvh - 200px);
+  width: min(100vw, calc((100dvh - 200px) * 1.6));
   max-width: 100%;
   max-height: 100%;
   margin: 0 auto;
@@ -57,18 +58,29 @@ export const StyledBoardGrid = styled.div`
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+
+  /* Responsividade somente em telas pequenas (mobile) */
+  @media (max-width: 767px) {
+    height: min(calc(100dvh - 210px), 640px);
+    width: min(calc(min(100vw, calc(100dvh - 210px)) - 8px), 640px);
+    aspect-ratio: 1 / 1;
+  }
 `;
 
 export const StyledLabelRow = styled.div`
   display: grid;
   grid-template-columns: 18px repeat(8, 1fr) 18px;
-  width: min(calc(min(100vw, calc(100dvh - 210px)) - 8px), 640px);
+  width: min(100vw, calc((100dvh - 200px) * 1.6));
   max-width: 100%;
   flex-shrink: 0;
   margin: 0 auto;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+
+  @media (max-width: 767px) {
+    width: min(calc(min(100vw, calc(100dvh - 210px)) - 8px), 640px);
+  }
 `;
 
 export const StyledLabel = styled.div`
