@@ -228,7 +228,9 @@ export function useGameBoardState(): GameBoardReturn {
             onTouchMove: (e) => e.preventDefault(),
             onTouchEnd: (e) => e.preventDefault(),
             onDragStart: (e) => {
-              e.dataTransfer?.setData('text/plain', `${position.row},${position.col}`);
+              if ('dataTransfer' in e && e.dataTransfer) {
+                e.dataTransfer.setData('text/plain', `${position.row},${position.col}`);
+              }
               handleDragStart(position);
             },
             onDragEnd: () => { setSelectedCell(null); setValidMoves([]); clearDrag(); },
