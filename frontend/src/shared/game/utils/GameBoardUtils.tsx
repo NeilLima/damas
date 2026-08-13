@@ -129,15 +129,27 @@ export function useGameBoardState(): GameBoardReturn {
   const cellsData = useMemo(() => {
     const result: RenderCell[] = [];
 
-    /** Retorna a posição (row,col) da célula que está sob as coordenadas. */
+    /** Retorna a posição (row,col) da célula que está sob as coordenadas.
+     *  Usa elementsFromPoint (pilha completa de elementos) e PULA os decorativos
+     *  com `pointer-events: none` (halo/fogos/coroa da dama). O elementFromPoint
+     *  retornaria esses elementos mesmo sem receberem eventos, fazendo o destino
+     *  resolver para a célula de origem e a dama "não deslizar" no toque. */
     const getCellAtPoint = (x: number, y: number): BoardPosition | null => {
-      const target = document.elementFromPoint(x, y);
-      if (!target) return null;
-      const cellEl = target.closest('[data-row]');
-      if (!cellEl) return null;
-      const toRow = parseInt(cellEl.getAttribute('data-row') || '0', 10);
-      const toCol = parseInt(cellEl.getAttribute('data-col') || '0', 10);
-      return { row: toRow, col: toCol };
+      const stack: Element[] = document.elementsFromPoint(x, y);
+      if (stack.length === 0) return null;
+      for (const el of stack) {
+        if (el instanceof HTMLElement) {
+          const cs = window.getComputedStyle(el);
+          if (cs.pointerEvents === 'none') continue;
+        }
+        const cellEl = el.closest('[data-row]');
+        if (cellEl) {
+          const toRow = parseInt(cellEl.getAttribute('data-row') || '0', 10);
+          const toCol = parseInt(cellEl.getAttribute('data-col') || '0', 10);
+          return { row: toRow, col: toCol };
+        }
+      }
+      return null;
     };
 
         const clearDrag = () => {
