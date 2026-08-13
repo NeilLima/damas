@@ -2,7 +2,7 @@ import styled, { keyframes } from 'styled-components';
 
 export const StyledRoot = styled.div`
   width: 100%;
-  height: 100dvh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -10,7 +10,7 @@ export const StyledRoot = styled.div`
   padding: 4px;
   background: #1f1f1f;
   box-sizing: border-box;
-  overflow: hidden;
+  overscroll-behavior: none;
 `;
 
 export const StyledBoardWrapper = styled.div`
@@ -46,22 +46,29 @@ export const StyledBoardGrid = styled.div`
   display: grid;
   grid-template-columns: 18px repeat(8, 1fr) 18px;
   grid-template-rows: repeat(8, 1fr);
-  /* Largura maior que a altura (tabuleiro mais "largo") */
-  height: calc(100dvh - 200px);
-  width: min(100vw, calc((100dvh - 200px) * 1.6));
+  /* Tabuleiro sempre quadrado e ajustado ao menor disponível (largura ou altura) */
+  height: min(calc(100dvh - 210px), 640px);
+  width: min(calc(min(100vw, calc(100dvh - 210px)) - 8px), 640px);
   max-width: 100%;
   max-height: 100%;
   margin: 0 auto;
   gap: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 `;
 
 export const StyledLabelRow = styled.div`
   display: grid;
   grid-template-columns: 18px repeat(8, 1fr) 18px;
-  width: min(100vw, calc((100dvh - 200px) * 1.6));
+  width: min(calc(min(100vw, calc(100dvh - 210px)) - 8px), 640px);
   max-width: 100%;
   flex-shrink: 0;
   margin: 0 auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 `;
 
 export const StyledLabel = styled.div`
@@ -97,6 +104,10 @@ export const StyledCell = styled.div<{
   cursor: ${(props) => (props.$hasPiece || props.$isPlayable ? 'pointer' : 'default')};
   transition: background-color 0.15s ease;
   position: relative;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 `;
 
 export const StyledPiece = styled.div<{
@@ -124,6 +135,10 @@ export const StyledPiece = styled.div<{
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 `;
 
 export const StyledPieceRing = styled.div<{ $isWhite: boolean }>`

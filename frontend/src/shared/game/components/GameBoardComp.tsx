@@ -65,6 +65,9 @@ function Piece2D({ piece }: { piece: RenderPiece }) {
       $isSelected={piece.isSelected}
       $isKing={piece.isKing}
       onClick={piece.onClick}
+      onTouchStart={piece.onTouchStart}
+      onTouchMove={piece.onTouchMove}
+      onTouchEnd={piece.onTouchEnd}
       onDragStart={piece.onDragStart}
       onDragEnd={piece.onDragEnd}
       draggable

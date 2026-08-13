@@ -60,6 +60,9 @@ export interface RenderPiece {
   isKing: boolean;
   isSelected: boolean;
   onClick: () => void;
+  onTouchStart: (e: React.TouchEvent) => void;
+  onTouchMove: (e: React.TouchEvent) => void;
+  onTouchEnd: (e: React.TouchEvent) => void;
   onDragStart: (e: React.DragEvent | React.TouchEvent) => void;
   onDragEnd: (e: React.DragEvent | React.TouchEvent) => void;
 }

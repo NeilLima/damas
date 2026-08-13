@@ -133,25 +133,59 @@ export function useGameBoardState(): GameBoardReturn {
   const cellsData = useMemo(() => {
     const result: RenderCell[] = [];
 
-    const getCellTouchEnd = () => (e: React.TouchEvent) => {
+    /** Retorna a posição (row,col) da célula que está sob as coordenadas de toque. */
+    const getCellAtPoint = (x: number, y: number): BoardPosition | null => {
+      const target = document.elementFromPoint(x, y);
+      if (!target) return null;
+      const cellEl = target.closest('[data-row]');
+      if (!cellEl) return null;
+      const toRow = parseInt(cellEl.getAttribute('data-row') || '0', 10);
+      const toCol = parseInt(cellEl.getAttribute('data-col') || '0', 10);
+      return { row: toRow, col: toCol };
+    };
+
+    const clearDrag = () => {
+      setDraggedPiece(null);
+      setValidMoves([]);
+      setTouchTarget(null);
+    };
+
+    const handlePieceTouchStart = (position: BoardPosition) => (e: React.TouchEvent) => {
+      e.preventDefault();
+      if (state.result !== 'playing' || state.isAiThinking) return;
+      const cell = cells[position.row][position.col];
+      const pieceColor = cell.value ? service.getPieceColor(cell.value) : null;
+      if (!pieceColor || pieceColor !== humanColor || currentTurn !== humanColor) return;
+      setDraggedPiece({ from: position });
+      const moves = service.getValidMoves(cells, position, pieceColor);
+      setValidMoves(moves);
+    };
+
+    const handlePieceTouchMove =
+      (position: BoardPosition) => (e: React.TouchEvent) => {
         e.preventDefault();
-        if (touchTarget && draggedPiece) {
-          const target = document.elementFromPoint(touchTarget.col * 100, touchTarget.row * 100);
-          if (target) {
-            const cellEl = target.closest('[data-row]');
-            if (cellEl) {
-              const toRow = parseInt(cellEl.getAttribute('data-row') || '0', 10);
-              const toCol = parseInt(cellEl.getAttribute('data-col') || '0', 10);
-              handleMove(draggedPiece.from, { row: toRow, col: toCol });
-            }
-          }
-        }
-        setDraggedPiece(null);
-        setValidMoves([]);
-        setTouchTarget(null);
+        if (!draggedPiece) return;
+        const touch = e.touches[0] || e.changedTouches[0];
+        if (!touch) return;
+        const pos = getCellAtPoint(touch.clientX, touch.clientY);
+        if (pos) setTouchTarget(pos);
       };
 
-    const getCellTouchMove = (row: number, col: number) => (e: React.TouchEvent) => {
+    const handlePieceTouchEnd =
+      (position: BoardPosition) => (e: React.TouchEvent) => {
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        if (draggedPiece && touch) {
+          const pos = getCellAtPoint(touch.clientX, touch.clientY);
+          // Se soltar em outra célula (não na origem), tenta o movimento.
+          if (pos && (pos.row !== draggedPiece.from.row || pos.col !== draggedPiece.from.col)) {
+            handleMove(draggedPiece.from, pos);
+          }
+        }
+        clearDrag();
+      };
+
+    const handleCellTouchMove = (row: number, col: number) => (e: React.TouchEvent) => {
       e.preventDefault();
       setTouchTarget({ row, col });
     };
@@ -169,14 +203,18 @@ export function useGameBoardState(): GameBoardReturn {
         if (cell.value) {
           const isWhite = cell.value === 'white' || cell.value === 'white-king';
           const isKing = cell.value === 'white-king' || cell.value === 'black-king';
+          const position = cell.position;
           piece = {
             type: 'piece',
             value: cell.value,
             isWhite,
             isKing,
             isSelected,
-            onClick: () => handleCellClick(cell.position),
-            onDragStart: () => handleDragStart(cell.position),
+            onClick: () => handleCellClick(position),
+            onTouchStart: handlePieceTouchStart(position),
+            onTouchMove: handlePieceTouchMove(position),
+            onTouchEnd: handlePieceTouchEnd(position),
+            onDragStart: () => handleDragStart(position),
             onDragEnd: () => { setDraggedPiece(null); setValidMoves([]); },
           };
         }
@@ -191,13 +229,13 @@ export function useGameBoardState(): GameBoardReturn {
           onClick: () => handleCellClick(cell.position),
           onDrop: () => handleDrop(cell.position),
           onDragOver: (e: React.DragEvent) => e.preventDefault(),
-          onTouchEnd: getCellTouchEnd(),
-          onTouchMove: getCellTouchMove(row, col),
+          onTouchEnd: () => clearDrag(),
+          onTouchMove: handleCellTouchMove(row, col),
         });
       }
     }
     return result;
-  }, [cells, selectedCell, validMoves, draggedPiece, touchTarget, handleCellClick, handleDrop, handleDragStart, handleMove]);
+  }, [cells, selectedCell, validMoves, draggedPiece, touchTarget, handleCellClick, handleDrop, handleDragStart, handleMove, state.result, state.isAiThinking, humanColor, currentTurn, service]);
 
   return {
     cellsData,
