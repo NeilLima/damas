@@ -60,6 +60,10 @@ export interface RenderPiece {
   isKing: boolean;
   isSelected: boolean;
   onClick: () => void;
+  onPointerDown: (e: React.PointerEvent) => void;
+  onPointerMove: (e: React.PointerEvent) => void;
+  onPointerUp: (e: React.PointerEvent) => void;
+  onPointerCancel: (e: React.PointerEvent) => void;
   onTouchStart: (e: React.TouchEvent) => void;
   onTouchMove: (e: React.TouchEvent) => void;
   onTouchEnd: (e: React.TouchEvent) => void;
@@ -75,6 +79,8 @@ export interface RenderCell {
   piece: RenderPiece | null;
   showValidDot: boolean;
   onClick: () => void;
+  onPointerMove: (e: React.PointerEvent) => void;
+  onPointerUp: (e: React.PointerEvent) => void;
   onDrop: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
   onTouchEnd: (e: React.TouchEvent) => void;

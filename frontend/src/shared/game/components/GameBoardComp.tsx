@@ -68,6 +68,22 @@ function Piece2D({ piece }: { piece: RenderPiece }) {
         e.stopPropagation();
         piece.onClick();
       }}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        piece.onPointerDown(e);
+      }}
+      onPointerMove={(e) => {
+        e.stopPropagation();
+        piece.onPointerMove(e);
+      }}
+      onPointerUp={(e) => {
+        e.stopPropagation();
+        piece.onPointerUp(e);
+      }}
+      onPointerCancel={(e) => {
+        e.stopPropagation();
+        piece.onPointerCancel(e);
+      }}
       onTouchStart={(e) => {
         e.stopPropagation();
         piece.onTouchStart(e);
@@ -112,6 +128,8 @@ function Cell2D({ cell }: { cell: RenderCell }) {
       $hasPiece={!!cell.piece}
       $isPlayable={cell.isPlayable}
       onClick={cell.onClick}
+      onPointerMove={cell.onPointerMove}
+      onPointerUp={cell.onPointerUp}
       onDrop={cell.onDrop}
       onDragOver={cell.onDragOver}
       onTouchEnd={cell.onTouchEnd}
