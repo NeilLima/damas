@@ -47,9 +47,9 @@ export const StyledBoardGrid = styled.div`
   display: grid;
   grid-template-columns: 18px repeat(8, 1fr) 18px;
   grid-template-rows: repeat(8, 1fr);
-  /* Largura maior que a altura (tabuleiro mais "largo") - layout desktop */
-  height: calc(100dvh - 200px);
-  width: min(100vw, calc((100dvh - 200px) * 1.6));
+  /* Tabuleiro mais alto e equilibrado (10 colunas de rótulo + 8 células) - desktop */
+  height: calc(100dvh - 180px);
+  width: min(100vw, calc((100dvh - 180px) * 1.25));
   max-width: 100%;
   max-height: 100%;
   margin: 0 auto;
@@ -61,9 +61,9 @@ export const StyledBoardGrid = styled.div`
 
   /* Responsividade somente em telas pequenas (mobile) */
   @media (max-width: 767px) {
-    /* Mantém a proporção do desktop, limitada pelo menor espaço disponível */
-    width: min(calc(100vw - 24px), calc((100dvh - 220px) * 1.6));
-    height: min(calc(100dvh - 220px), calc((100vw - 24px) / 1.6));
+    /* Proporção mais alta (quase quadrada) para não achatar no celular */
+    width: min(calc(100vw - 20px), calc((100dvh - 180px) * 1.2));
+    height: min(calc(100dvh - 180px), calc((100vw - 20px) / 1.2));
     max-width: 100%;
     max-height: 100%;
   }
@@ -72,7 +72,7 @@ export const StyledBoardGrid = styled.div`
 export const StyledLabelRow = styled.div`
   display: grid;
   grid-template-columns: 18px repeat(8, 1fr) 18px;
-  width: min(100vw, calc((100dvh - 200px) * 1.6));
+  width: min(100vw, calc((100dvh - 180px) * 1.25));
   max-width: 100%;
   flex-shrink: 0;
   margin: 0 auto;
@@ -82,7 +82,7 @@ export const StyledLabelRow = styled.div`
 
   @media (max-width: 767px) {
     /* Mesma largura do tabuleiro para alinhar os rótulos */
-    width: min(calc(100vw - 24px), calc((100dvh - 220px) * 1.6));
+    width: min(calc(100vw - 20px), calc((100dvh - 180px) * 1.2));
   }
 `;
 
