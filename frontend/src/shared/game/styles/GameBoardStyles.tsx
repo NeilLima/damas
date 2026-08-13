@@ -516,3 +516,33 @@ export const StyledHint = styled.p`
   color: #7a7a86;
   text-align: center;
 `;
+
+export const StyledPlayTip = styled.div`
+  margin: 18px 0 4px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(102, 126, 234, 0.12);
+  border: 1px solid rgba(102, 126, 234, 0.35);
+  text-align: left;
+  line-height: 1.55;
+
+  .tip-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #aab6ff;
+  }
+
+  .tip-text {
+    margin: 0;
+    font-size: 0.88rem;
+    color: #cdd0e0;
+  }
+
+  .tip-text strong {
+    color: #fff;
+  }
+`;

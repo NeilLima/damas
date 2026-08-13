@@ -40,6 +40,7 @@ import {
   StyledCheckmark,
   StyledStartButton,
   StyledHint,
+  StyledPlayTip,
 } from '../styles/GameBoardStyles';
 import type { RenderPiece, RenderCell } from '../types/GameTypes';
 
@@ -276,6 +277,15 @@ function GameBoardContent() {
                 })}
               </StyledModalRow>
             </StyledModalSection>
+
+            <StyledPlayTip>
+              <div className="tip-title">🎮 Como mover as peças</div>
+              <p className="tip-text">
+                <strong>Toque/clique</strong> na peça que deseja mover. Ela ficará destacada e os
+                espaços para onde ela pode ir aparecerão marcados. Depois, <strong>toque/clique</strong> em
+                um dos espaços marcados para fazer o movimento.
+              </p>
+            </StyledPlayTip>
 
             <StyledStartButton type="button" onClick={handleStart}>
               ▶ Jogar
