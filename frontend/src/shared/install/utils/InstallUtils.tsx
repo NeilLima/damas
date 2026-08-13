@@ -10,23 +10,40 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
-const isStandalone = (): boolean =>
-  typeof window !== 'undefined' &&
-  (window.matchMedia('(display-mode: standalone)').matches ||
-    // iOS Safari
-    (navigator as unknown as { standalone?: boolean }).standalone === true);
+const INSTALL_DISMISS_KEY = 'damas_install_dismissed';
+
+/** Detecta se o app está rodando instalado (standalone/fullscreen/minimal-ui). */
+const isStandalone = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const md = window.matchMedia('(display-mode: standalone)');
+  const f = window.matchMedia('(display-mode: fullscreen)');
+  const mu = window.matchMedia('(display-mode: minimal-ui)');
+  const ios = (navigator as unknown as { standalone?: boolean }).standalone === true;
+  return md.matches || f.matches || mu.matches || ios;
+};
 
 export function useInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [canInstall, setCanInstall] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(INSTALL_DISMISS_KEY) === '1' || isStandalone();
+    } catch {
+      return isStandalone();
+    }
+  });
 
   useEffect(() => {
-    // Se já estiver instalado (standalone), não mostra nada.
-    if (isStandalone()) return;
+    // Se já estiver instalado, não registra nada nem mostra prompt.
+    if (isStandalone()) {
+      setDismissed(true);
+      return;
+    }
 
     const onBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      // Defensivo: mesmo com o evento, se já estiver instalado, não mostra.
+      if (isStandalone()) return;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setCanInstall(true);
     };
@@ -35,6 +52,11 @@ export function useInstallPrompt() {
       setCanInstall(false);
       setDeferredPrompt(null);
       setDismissed(true);
+      try {
+        localStorage.setItem(INSTALL_DISMISS_KEY, '1');
+      } catch {
+        /* noop */
+      }
     };
 
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
@@ -61,6 +83,11 @@ export function useInstallPrompt() {
     if (outcome === 'accepted') {
       setCanInstall(false);
       setDismissed(true);
+      try {
+        localStorage.setItem(INSTALL_DISMISS_KEY, '1');
+      } catch {
+        /* noop */
+      }
       return true;
     }
     return false;
@@ -69,6 +96,11 @@ export function useInstallPrompt() {
   const dismiss = useCallback(() => {
     setDismissed(true);
     setCanInstall(false);
+    try {
+      localStorage.setItem(INSTALL_DISMISS_KEY, '1');
+    } catch {
+      /* noop */
+    }
   }, []);
 
   return {

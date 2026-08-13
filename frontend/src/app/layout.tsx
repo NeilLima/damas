@@ -11,7 +11,8 @@ export const metadata: Metadata = {
     title: "Jogo de Damas",
   },
   icons: {
-    icon: "/icon.svg",
+    icon: "/icons/icon-192.png",
+    shortcut: "/icons/icon-192.png",
     apple: "/icons/icon-192.png",
   },
 };
