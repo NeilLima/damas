@@ -61,9 +61,11 @@ export const StyledBoardGrid = styled.div`
 
   /* Responsividade somente em telas pequenas (mobile) */
   @media (max-width: 767px) {
-    height: min(calc(100dvh - 210px), 640px);
-    width: min(calc(min(100vw, calc(100dvh - 210px)) - 8px), 640px);
-    aspect-ratio: 1 / 1;
+    /* Mantém a proporção do desktop, limitada pelo menor espaço disponível */
+    width: min(calc(100vw - 24px), calc((100dvh - 220px) * 1.6));
+    height: min(calc(100dvh - 220px), calc((100vw - 24px) / 1.6));
+    max-width: 100%;
+    max-height: 100%;
   }
 `;
 
@@ -79,7 +81,8 @@ export const StyledLabelRow = styled.div`
   -webkit-user-select: none;
 
   @media (max-width: 767px) {
-    width: min(calc(min(100vw, calc(100dvh - 210px)) - 8px), 640px);
+    /* Mesma largura do tabuleiro para alinhar os rótulos */
+    width: min(calc(100vw - 24px), calc((100dvh - 220px) * 1.6));
   }
 `;
 
