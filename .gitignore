@@ -5,3 +5,5 @@ backend/tsconfig.gamecheck.json
 
 # Vercel
 .vercel
+TASKS.md
+*.log
