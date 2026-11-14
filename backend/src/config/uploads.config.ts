@@ -1,16 +1,41 @@
 /* eslint-disable prettier/prettier */
 import { registerAs } from '@nestjs/config';
-import sharp from 'sharp';
-import ffmpeg from 'fluent-ffmpeg';
 import * as fs from 'fs-extra';
 import { Buffer } from 'buffer';
 import { createReadStream } from 'fs';
 import { join } from 'path';
-import * as ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import * as os from 'os';
 
-// Ensure ffmpeg has a valid binary path in all environments
-ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+/* 🔧 sharp/ffmpeg carregados sob demanda (lazy): em serverless (Vercel)
+ * o binário nativo do ffmpeg e os bindings do sharp podem não existir
+ * no bundle — importar no topo derrubava TODAS as rotas no cold start. */
+let sharpLib: typeof import('sharp') | null = null;
+let ffmpegLib: typeof import('fluent-ffmpeg') | null = null;
+let ffmpegPathSet = false;
+
+const getSharp = () => {
+  if (!sharpLib) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    sharpLib = require('sharp') as typeof import('sharp');
+  }
+  return sharpLib as typeof import('sharp');
+};
+
+const getFfmpeg = () => {
+  if (!ffmpegLib) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    ffmpegLib = require('fluent-ffmpeg') as typeof import('fluent-ffmpeg');
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg') as { path: string };
+      (ffmpegLib as typeof import('fluent-ffmpeg')).setFfmpegPath(ffmpegInstaller.path);
+    } catch {
+      /* sem binário ffmpeg no serverless — processVideo/Audio falham
+         com mensagem clara em vez de derrubar o boot */
+    }
+  }
+  return ffmpegLib as typeof import('fluent-ffmpeg');
+};
 
 export const uploadsConfig = {
   maxFileSize: 1024 * 1024 * 1024 * 5, // Aumentado para 5GB
@@ -150,7 +175,7 @@ export const processImage = async (base64String: string): Promise<string> => {
     
     
 
-    const processedBuffer = await sharp(buffer)
+    const processedBuffer = await getSharp()(buffer)
       .resize(
         uploadsConfig.compression.image.maxWidth,
         uploadsConfig.compression.image.maxHeight,
@@ -189,7 +214,7 @@ export const processVideo = async (base64String: string): Promise<string> => {
 
     // Transcode: H.264 + AAC, máx 720p, 1 Mbps
     await new Promise<void>((resolve, reject) => {
-      ffmpeg(inPath)
+      getFfmpeg()(inPath)
         .videoCodec('libx264')
         .audioCodec('aac')
         .size('?x720')
@@ -236,7 +261,7 @@ export const processAudio = async (base64String: string): Promise<string> => {
       
       
 
-      ffmpeg(inputStream)
+      getFfmpeg()(inputStream)
         .audioBitrate(uploadsConfig.compression.audio.bitrate)
         .audioCodec(uploadsConfig.compression.audio.codec)
         .toFormat(uploadsConfig.compression.audio.format)

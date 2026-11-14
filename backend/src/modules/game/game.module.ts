@@ -16,7 +16,15 @@ import { GameRoomDbService } from './services/GameRoomDbService';
 @Module({
   imports: [CoreModule],
   controllers: [GameController, GameRoomController],
-  providers: [GameRoomService, GameService, GameRepository, GameGateway, GameRoomDbService],
+  providers: [
+    GameRoomService,
+    GameService,
+    GameRepository,
+    // WebSocket não funciona em serverless (Vercel) — o gateway só
+    // sobe em ambiente com servidor persistente (dev local).
+    ...(process.env.VERCEL ? [] : [GameGateway]),
+    GameRoomDbService,
+  ],
   exports: [GameRoomService, GameService],
 })
 export class GameModule {}
