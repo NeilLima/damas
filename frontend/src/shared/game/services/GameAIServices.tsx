@@ -320,6 +320,14 @@ export function chooseAIMove(
   const moves = getAllMoves(cells, aiColor);
   if (moves.length === 0) return null;
 
+  /* 🎲 Fácil = IA humana: ~55% das jogadas são aleatórias (erros
+   *  proposital) e só ~45% usam o minimax raso — fica competitiva
+   *  o suficiente pra iniciante ganhar, mas erra feio às vezes. */
+  if (difficulty === 'easy' && Math.random() < 0.55) {
+    const pick = moves[Math.floor(Math.random() * moves.length)];
+    return { from: pick.from, to: pick.to };
+  }
+
   const nextColor: PlayerColor = aiColor === 'white' ? 'black' : 'white';
 
   let bestMove: MoveCandidate | null = null;
