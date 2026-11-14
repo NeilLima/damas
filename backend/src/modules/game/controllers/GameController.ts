@@ -5,8 +5,8 @@
 // ============================================
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { GameService } from '../services/GameService';
-import { MoveDto, StartGameDto, ValidMovesDto } from '../dto/GameDto';
-import { BoardPosition, GameStatePayload, HistoryItem, OngoingGame } from '../types/GameTypes';
+import type { MoveDto, StartGameDto, ValidMovesDto } from '../dto/GameDto';
+import type { BoardPosition, GameStatePayload, HistoryItem, OngoingGame } from '../types/GameTypes';
 
 @Controller('game')
 export class GameController {

@@ -15,7 +15,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { GameRoomService } from '../services/GameRoomService';
-import { ChooseColorDto, JoinRoomDto, MakeMoveDto, ResetDto } from '../dto/GameDto';
+import type { ChooseColorDto, JoinRoomDto, MakeMoveDto, ResetDto } from '../dto/GameDto';
 import { createGameLog } from '../logs/GameLogs';
 
 interface ClientData {

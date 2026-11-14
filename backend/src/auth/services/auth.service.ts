@@ -5,7 +5,6 @@ import * as bcrypt from 'bcryptjs';
 
 import { LoginDto, RegisterDto } from '../dto/auth.dto';
 import { AuthRepository } from '../repository/auth.repository';
-import { SuggestionService } from '../../modules/suggestions/services/suggestions.service';
 
 @Injectable()
 export class AuthService {
@@ -13,7 +12,6 @@ export class AuthService {
     private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly suggestionService: SuggestionService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -40,37 +38,12 @@ export class AuthService {
       },
     });
 
-    // Gerar sugestões automaticamente se o usuário tiver país definido (não bloqueante)
-    if (dto.countryIso2) {
-      // Executar em background sem await para não atrasar o registro
-      this.generateSuggestionsForNewUser(user.id, dto.countryIso2).catch(() => {
-        // Silenciar erros - não deve afetar o registro
-      });
-    }
 
     const token = this.generateToken(user.id, user.email);
 
     return { user, token };
   }
 
-  private async generateSuggestionsForNewUser(userId: string, countryIso2: string): Promise<void> {
-    try {
-      // Buscar todos os usuários com o mesmo país
-      const usersInSameCountry = await this.suggestionService.findUsersInSameCountry(userId, countryIso2, 50);
-      
-      // Gerar sugestões para cada usuário encontrado
-      for (const suggestedId of usersInSameCountry) {
-        await this.suggestionService.generateSuggestion(userId, suggestedId);
-        // Também gerar a sugestão reversa (para que o outro usuário veja este)
-        await this.suggestionService.generateSuggestion(suggestedId, userId);
-      }
-      
-      console.log(`✅ Sugestões geradas para novo usuário ${userId}: ${usersInSameCountry.length} encontrados`);
-    } catch (error) {
-      // Não falhar o registro se a geração de sugestões falhar
-      console.error('Erro ao gerar sugestões para novo usuário:', error);
-    }
-  }
 
   async login(dto: LoginDto) {
     const user = await this.authRepository.findUserByEmail(dto.email);
