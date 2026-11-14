@@ -73,11 +73,14 @@ export function getValidMoves(
 
           if (targetColor === null) {
             moves.push({ row: r, col: c });
-            if (crossedEnemy) break; // dama aterrissa logo após a peça capturada
+            /* 🏰 Dama pode capturar VÁRIAS peças no mesmo deslize — continua
+             *  varrendo depois de aterrissar (o movePiece remove todas as
+             *  peças inimigas no caminho até o destino escolhido). */
           } else if (targetColor === pieceColor) {
             break; // peça própria bloqueia
           } else {
-            if (crossedEnemy) break; // não pula duas peças seguidas
+            /* 🏰 Dama pula quantas peças inimigas houver no caminho —
+             *  captura dupla/tripla é regra oficial das damas brasileiras. */
             crossedEnemy = true;
           }
 

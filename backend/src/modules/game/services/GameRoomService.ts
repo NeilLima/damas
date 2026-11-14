@@ -78,11 +78,11 @@ export class GameRoomService {
             const targetColor = this.getPieceColor(targetCell.value);
             if (targetColor === null) {
               moves.push({ row: r, col: c });
-              if (crossedEnemy) break;
+              /* 🏰 Dama captura VÁRIAS peças no mesmo deslize (regra oficial) */
             } else if (targetColor === pieceColor) {
               break;
             } else {
-              if (crossedEnemy) break;
+              /* 🏰 Dama pula quantas peças inimigas houver no caminho */
               crossedEnemy = true;
             }
             r += dRow;
