@@ -10,11 +10,13 @@ import { GameRoomService } from './services/GameRoomService';
 import { GameService } from './services/GameService';
 import { GameRepository } from './repository/GameRepository';
 import { GameController } from './controllers/GameController';
+import { GameRoomController } from './controllers/GameRoomController';
+import { GameRoomDbService } from './services/GameRoomDbService';
 
 @Module({
   imports: [CoreModule],
-  controllers: [GameController],
-  providers: [GameRoomService, GameService, GameRepository, GameGateway],
+  controllers: [GameController, GameRoomController],
+  providers: [GameRoomService, GameService, GameRepository, GameGateway, GameRoomDbService],
   exports: [GameRoomService, GameService],
 })
 export class GameModule {}

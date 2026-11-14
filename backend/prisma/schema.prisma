@@ -3038,3 +3038,17 @@ model GalleryPhotoTag {
 // Sistema de interações unificado usando InteractionsService
 // com entityType: 'galleryPhoto' nas tabelas Reaction e Comment
 // ============================================
+
+// ============================================
+// Multiplayer - Sala de jogo persistida (serverless-safe)
+// Estado serializado da sala para polling REST na Vercel
+// ============================================
+model GameRoomState {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  stateJson Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("GameRoomState")
+}

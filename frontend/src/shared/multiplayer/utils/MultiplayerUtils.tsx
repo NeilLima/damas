@@ -27,12 +27,36 @@ const INITIAL_STATE: MultiplayerState = {
   error: null,
 };
 
+// ============================================
+// Modo de transporte: 'socket' (dev local) ou
+// 'rest' (produção/Vercel — WebSocket não é
+// suportado em serverless; polling a cada 1.5s)
+// 'auto' = tenta socket e cai pra REST se falhar
+// ============================================
+type MpMode = 'socket' | 'rest';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
+const POLL_MS = 1500;
+
+interface RestRoomPayload {
+  roomId: string;
+  color?: 'white' | 'black' | null;
+  status?: 'waiting' | 'playing' | 'over';
+  winner?: 'white' | 'black' | null;
+  turn?: 'white' | 'black';
+  lastMove?: unknown;
+  players?: { id: string; name: string; color: 'white' | 'black' }[];
+  state?: MultiplayerStatePayload;
+}
+
 export function useMultiplayer() {
   const service = useBoardService();
   const { userId } = useAuth();
   const { connected, emit, on, off } = useWebSocket();
 
   const [state, setState] = useState<MultiplayerState>(INITIAL_STATE);
+  const [mode, setMode] = useState<MpMode>('socket');
+  const modeRef = useRef<MpMode>('socket');
+  const socketGraceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Refs para evitar closures desatualizadas nos handlers do socket
   const stateRef = useRef(state);
@@ -93,6 +117,207 @@ export function useMultiplayer() {
     if (roomId) emit(MULTIPLAYER_SOCKET.leave, roomId);
     setState(INITIAL_STATE);
   }, [emit]);
+
+  // ============================================
+  // 🌐 MODO REST (polling) — fallback p/ produção
+  // ============================================
+
+  const restHeaders = { 'Content-Type': 'application/json' } as const;
+
+  const restCreateRoom = useCallback(async () => {
+    const myId = userId || `player-${Date.now()}`;
+    try {
+      const res = await fetch(`${API_BASE}/game/rooms`, {
+        method: 'POST',
+        headers: restHeaders,
+        body: JSON.stringify({ playerId: myId, playerName: `Jogador ${myId.slice(0, 4)}` }),
+      });
+      if (!res.ok) throw new Error('Falha ao criar sala');
+      const data = (await res.json()) as RestRoomPayload;
+      setState((prev) => ({
+        ...prev,
+        roomId: data.roomId,
+        myColor: data.color ?? 'white',
+        myId,
+        phase: 'waiting',
+        error: null,
+        winner: null,
+      }));
+    } catch {
+      setState((prev) => ({ ...prev, phase: 'menu', error: 'Não foi possível conectar ao servidor.' }));
+    }
+  }, [userId]);
+
+  const restJoinRoom = useCallback(
+    async (roomId: string) => {
+      const myId = userId || `player-${Date.now()}`;
+      try {
+        const res = await fetch(`${API_BASE}/game/rooms/join`, {
+          method: 'POST',
+          headers: restHeaders,
+          body: JSON.stringify({ code: roomId, playerId: myId, playerName: `Jogador ${myId.slice(0, 4)}` }),
+        });
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({}))) as { message?: string };
+          throw new Error(err.message || 'Sala não encontrada ou cheia');
+        }
+        const data = (await res.json()) as RestRoomPayload;
+        const isPlaying = data.status === 'playing';
+        setState((prev) => ({
+          ...prev,
+          roomId,
+          myColor: data.color ?? null,
+          myId,
+          phase: isPlaying ? 'playing' : 'waiting',
+          board: data.state?.board ?? prev.board,
+          turn: data.state?.turn ?? prev.turn,
+          error: null,
+        }));
+      } catch (e) {
+        setState((prev) => ({ ...prev, phase: 'menu', error: (e as Error).message }));
+      }
+    },
+    [userId],
+  );
+
+  const restMakeMove = useCallback(
+    async (from: BoardPosition, to: BoardPosition) => {
+      const s = stateRef.current;
+      if (!s.roomId || s.phase !== 'playing' || !s.myId) return;
+      try {
+        const res = await fetch(`${API_BASE}/game/rooms/${s.roomId}/move`, {
+          method: 'POST',
+          headers: restHeaders,
+          body: JSON.stringify({
+            playerId: s.myId,
+            fromRow: from.row,
+            fromCol: from.col,
+            toRow: to.row,
+            toCol: to.col,
+          }),
+        });
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({}))) as { message?: string };
+          throw new Error(err.message || 'Movimento inválido');
+        }
+        const data = (await res.json()) as RestRoomPayload;
+        setState((prev) => ({
+          ...prev,
+          board: data.state?.board ?? prev.board,
+          turn: data.turn ?? prev.turn,
+          phase: data.status === 'over' ? 'over' : prev.phase,
+          winner: data.winner ?? prev.winner,
+          error: null,
+        }));
+      } catch (e) {
+        setState((prev) => ({ ...prev, error: (e as Error).message }));
+      }
+    },
+    [],
+  );
+
+  const restReset = useCallback(async () => {
+    const roomId = stateRef.current.roomId;
+    if (!roomId) return;
+    try {
+      const res = await fetch(`${API_BASE}/game/rooms/${roomId}/reset`, { method: 'POST' });
+      if (res.ok) setState((prev) => ({ ...prev, phase: 'waiting', winner: null }));
+    } catch {
+      /* silencioso — polling corrige */
+    }
+  }, []);
+
+  const restLeaveRoom = useCallback(async () => {
+    const s = stateRef.current;
+    if (s.roomId && s.myId) {
+      fetch(`${API_BASE}/game/rooms/${s.roomId}?playerId=${encodeURIComponent(s.myId)}`, { method: 'DELETE' }).catch(() => undefined);
+    }
+    setState(INITIAL_STATE);
+  }, []);
+
+  // Polling do estado da sala quando em modo REST
+  useEffect(() => {
+    if (mode !== 'rest' || !state.roomId || state.phase === 'menu') return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/game/rooms/${state.roomId}?playerId=${encodeURIComponent(state.myId || '')}`);
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as RestRoomPayload;
+        if (cancelled) return;
+        setState((prev) => {
+          if (prev.roomId !== data.roomId) return prev;
+          const playersCount = data.players?.length ?? 0;
+          const phase =
+            data.status === 'over'
+              ? 'over'
+              : data.status === 'playing' || playersCount >= 2
+                ? 'playing'
+                : 'waiting';
+          return {
+            ...prev,
+            myColor: data.color ?? prev.myColor,
+            board: data.state?.board ?? prev.board,
+            turn: data.turn ?? prev.turn,
+            winner: data.winner ?? prev.winner,
+            phase,
+            error: null,
+          };
+        });
+      } catch {
+        /* silencioso — tenta de novo no próximo tick */
+      }
+    };
+    poll();
+    const timer = setInterval(poll, POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, state.roomId, state.myId]);
+
+  // Fallback automático: se o socket não conectar em 6s, ativa REST
+  useEffect(() => {
+    if (socketGraceRef.current) clearTimeout(socketGraceRef.current);
+    socketGraceRef.current = setTimeout(() => {
+      setMode((prev) => {
+        if (prev === 'socket' && !connected) {
+          modeRef.current = 'rest';
+          return 'rest';
+        }
+        return prev;
+      });
+    }, 6000);
+    return () => {
+      if (socketGraceRef.current) clearTimeout(socketGraceRef.current);
+    };
+  }, [connected]);
+
+  // Ações despacham pro transporte ativo
+  const dispatch = useCallback(
+    (fn: 'create' | 'join' | 'move' | 'reset' | 'leave', ...args: unknown[]) => {
+      const m = modeRef.current;
+      if (m === 'rest') {
+        if (fn === 'create') void restCreateRoom();
+        else if (fn === 'join') void restJoinRoom(args[0] as string);
+        else if (fn === 'move') void restMakeMove(args[0] as BoardPosition, args[1] as BoardPosition);
+        else if (fn === 'reset') void restReset();
+        else if (fn === 'leave') void restLeaveRoom();
+        return;
+      }
+      if (fn === 'create') createRoom();
+      else if (fn === 'join') joinRoom(args[0] as string);
+      else if (fn === 'move') makeMove(args[0] as BoardPosition, args[1] as BoardPosition);
+      else if (fn === 'reset') reset();
+      else if (fn === 'leave') leaveRoom();
+    },
+    [createRoom, joinRoom, makeMove, reset, leaveRoom, restCreateRoom, restJoinRoom, restMakeMove, restReset, restLeaveRoom],
+  );
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
 
   // ============================================
   // 3️⃣ OBJETOS / HANDLERS DO SOCKET
@@ -190,8 +415,8 @@ export function useMultiplayer() {
   }, []);
 
   useEffect(() => {
-    setState((prev) => ({ ...prev, connected }));
-  }, [connected]);
+    setState((prev) => ({ ...prev, connected: mode === 'rest' ? true : connected }));
+  }, [connected, mode]);
 
   // ============================================
   // 2️⃣ INFORMAÇÃO DE RENDER
@@ -213,8 +438,14 @@ export function useMultiplayer() {
   );
 
   const actions = useMemo(
-    () => ({ createRoom, joinRoom, makeMove, reset, leaveRoom }),
-    [createRoom, joinRoom, makeMove, reset, leaveRoom],
+    () => ({
+      createRoom: () => dispatch('create'),
+      joinRoom: (roomId: string) => dispatch('join', roomId),
+      makeMove: (from: BoardPosition, to: BoardPosition) => dispatch('move', from, to),
+      reset: () => dispatch('reset'),
+      leaveRoom: () => dispatch('leave'),
+    }),
+    [dispatch],
   );
 
 
